@@ -5,6 +5,9 @@
 #include <libgpu.h>
 #include <libgte.h>
 #include <memory.h>
+#ifdef __psyz
+#include <psyz/gte.h>
+#endif
 #include <stdlib.h>
 
 #include "common.h"
@@ -23,6 +26,17 @@
 #include "gameplay/player_actor.h"
 #include "gameplay/room_effects.h"
 #include "scene_runtime.h"
+
+/* Screen XY is one 32-bit word, not pointer-width GPU tag storage. */
+static void _modelLightingCopyScreenWord(const void* from, void* to)
+{
+    u32 xy;
+    memcpy(&xy, from, sizeof(xy));
+    memcpy(to, &xy, sizeof(xy));
+#ifdef __psyz
+    Psyz_GteCopyPgxpSxy(from, to, xy);
+#endif
+}
 
 /// Writable packet word containing vertex 0's texture coordinates and CLUT address.
 ///
@@ -1438,8 +1452,8 @@ u32* tmdDrawStreamPrimGt4EnvLayer(TmdStreamWorkspace* workspace, s32 objectFlags
                 gte_stsxy2(&packetPair[1].x3);
                 // Collapse the rejected half into a repeated endpoint; retain AVSZ4 depths.
                 if (workspace->gteResult <= 0) {
-                    *(u_long*)&packetPair[0].x0 = *(u_long*)&packetPair[0].x1;
-                    *(u_long*)&packetPair[1].x0 = *(u_long*)&packetPair[1].x1;
+                    _modelLightingCopyScreenWord(&packetPair[0].x1, &packetPair[0].x0);
+                    _modelLightingCopyScreenWord(&packetPair[1].x1, &packetPair[1].x0);
                     gte_stopz(gteResultDestination);
                     if (workspace->gteResult >= 0) {
                         continue;
@@ -1447,8 +1461,8 @@ u32* tmdDrawStreamPrimGt4EnvLayer(TmdStreamWorkspace* workspace, s32 objectFlags
                 } else {
                     gte_stopz(gteResultDestination);
                     if (workspace->gteResult >= 0) {
-                        *(u_long*)&packetPair[0].x3 = *(u_long*)&packetPair[0].x2;
-                        *(u_long*)&packetPair[1].x3 = *(u_long*)&packetPair[1].x2;
+                        _modelLightingCopyScreenWord(&packetPair[0].x2, &packetPair[0].x3);
+                        _modelLightingCopyScreenWord(&packetPair[1].x2, &packetPair[1].x3);
                     }
                 }
                 gte_avsz4();
