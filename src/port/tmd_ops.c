@@ -44,9 +44,10 @@ static void loadV(unsigned slot, const SVECTOR* v)
 
 static void storeXy(short* dst, unsigned sxyReg)
 {
-    u32 v  = Psyz_GteDataRead(sxyReg);
-    dst[0] = (short)(v & 0xFFFF);
-    dst[1] = (short)(v >> 16);
+    /* Keep the original packed screen word, and carry its projection sidecar
+     * to this exact packet address. Plain halfword stores lose that ownership
+     * and the renderer deliberately does not guess by matching screen XY. */
+    Psyz_GteStoreSxyTo(sxyReg, dst);
 }
 
 /* Store RGB FIFO entry `reg` (20..22) as a packet colour word: r, g, b, code. */
@@ -273,14 +274,16 @@ static u32* xformStreamVerts(TmdStreamWorkspace* ws, u32* el, int elementColour)
             }
             *(u32*)((u8*)ws->szTable + (vOff >> 1)) = depth;
         }
-        u32 xy = Psyz_GteDataRead(14);
         if (elementColour) {
             Psyz_GteDataWrite(6, el[1]);
         }
         loadV(0, normalAt(ws, w0 >> 16));
         Psyz_GteCommand(GTE_NCCS);
         u32 rgb = Psyz_GteDataRead(22);
-        memcpy(base + (dest & 0xFFFF), &xy, 4);
+        /* NCCS changes colour/lighting registers, not the SXY FIFO. Register
+         * this scatter at its remapped host-packet address, just like the
+         * direct polygon path, while retaining the same four packet bytes. */
+        Psyz_GteStoreSxyTo(14, base + (dest & 0xFFFF));
         memcpy(base + (dest >> 16), &rgb, 4);
     }
     return el;
