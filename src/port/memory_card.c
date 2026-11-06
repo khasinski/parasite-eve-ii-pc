@@ -126,7 +126,14 @@ static long listFiles(long channel, CardFile* files, int* count, int* blocks)
     DIR* dir = opendir(directory);
     if (!dir) return McErrCardInvalid;
     struct dirent* entry;
-    while ((entry = readdir(dir))) {
+    for (;;) {
+        /* NULL also signals an error; calls below may change errno. */
+        errno = 0;
+        entry = readdir(dir);
+        if (!entry) {
+            if (errno != 0) result = McErrCardInvalid;
+            break;
+        }
         if (!validName(entry->d_name)) continue;
         if (snprintf(path, sizeof(path), "%s/%s", directory, entry->d_name) >= sizeof(path)) { result = McErrCardInvalid; break; }
         struct stat st;
@@ -139,7 +146,7 @@ static long listFiles(long channel, CardFile* files, int* count, int* blocks)
         file->blocks = (file->bytes + CARD_BLOCK_BYTES - 1) / CARD_BLOCK_BYTES;
         *blocks += file->blocks;
     }
-    closedir(dir);
+    if (closedir(dir) != 0) result = McErrCardInvalid;
     if (*blocks > CARD_BLOCKS) result = McErrCardInvalid;
     qsort(files, *count, sizeof(*files), compareFiles);
     return result;
