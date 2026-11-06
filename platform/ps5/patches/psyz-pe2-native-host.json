@@ -1,0 +1,22 @@
+{
+  "base": "ff5457d8bfcf636c6e12941a71ee66c065a3e01f",
+  "lineEndings": "LF",
+  "patchSha256": "f272ed32a1db40550fe3ee0a13d8b558151cfe0c8c1003a8f86dbd2471457621",
+  "files": [
+    {
+      "path": "psyz/CMakeLists.txt",
+      "baseSha256": "f58d88d43f62546eb1ef1582875a36c3c7fce298f00d243898b37fb7bc0fb842",
+      "patchedSha256": "3e15909a40ddc24fec40504578f97edbb8631ea44444efcb063c88ff3295cafd"
+    },
+    {
+      "path": "psyz/include/malloc.h",
+      "baseSha256": "3fb3d2db4f5bc2b007d253e250749cd67b0fe70f2ea6ec2d838c590416ccb85c",
+      "patchedSha256": "2cd4c852d1728883e8ab429359ba88c8ceedff32a52430b59833bdfd80783146"
+    },
+    {
+      "path": "psyz/src/platform/sdl3_gpu.c",
+      "baseSha256": "900b44485aa5f8c19b228f3605aa0216a42a01022b0b1066bad4a7dd13f548dc",
+      "patchedSha256": "87908049aaa8972522beef8864fa9f3f24271132b914fedb9ac81ceb978408ab"
+    }
+  ]
+}

@@ -252,6 +252,16 @@ target_compile_definitions(parasite-eve-ii-pc PRIVATE __psyz SKIP_ASM)
 target_link_libraries(parasite-eve-ii-pc PRIVATE psyz)
 target_sources(parasite-eve-ii-pc PRIVATE src/port/spu_voice_attributes.c)
 target_sources(parasite-eve-ii-pc PRIVATE src/port/host_ui.c)
+if(PE2_PS5_HOST)
+    target_sources(parasite-eve-ii-pc PRIVATE src/port/ps5_paths.c src/port/ps5_app_discovery.c)
+    target_sources(parasite-eve-ii-pc PRIVATE "${PE2_PS5_SUPPORT_DIR}/app_crt.o"
+        "${PE2_PS5_SUPPORT_DIR}/application-stage.c"
+        "${PE2_PS5_SUPPORT_DIR}/application-static-dlfcn.c"
+        $<TARGET_OBJECTS:pe2-ps5-sdl-core>)
+    target_compile_definitions(parasite-eve-ii-pc PRIVATE PE2_PS5_HOST=1)
+    set_target_properties(parasite-eve-ii-pc PROPERTIES OUTPUT_NAME parasite-eve-ii-ps5 SUFFIX .elf)
+    include(cmake/ps5/directory.cmake)
+endif()
 
 # Variant units: a package compiled from another package's shared source with its own -D parameters.
 # Each is a separate object library so the parameters stay per package (see docs/PORT_PLAN.md).

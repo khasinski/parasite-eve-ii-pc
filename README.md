@@ -103,6 +103,13 @@ See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for licenses.
 *Parasite Eve* is a trademark of Square Enix. This is an unofficial fan project and is not affiliated with or endorsed
 by Square Enix. The screenshots show the game running from the author's own discs.
 
+## Experimental native PS5 source integration
+
+An opt-in public-runtime build recipe is described in
+[docs/PS5_HOST.md](docs/PS5_HOST.md). It is a draft source integration awaiting
+native console feedback, not a playable PS5 release. Desktop defaults and
+the pinned PsyZ submodule are unchanged.
+
 ## License
 
 Project code is released under [CC0 1.0](LICENSE), as the decompilation it is derived from. Game assets and the game's

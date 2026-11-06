@@ -18,6 +18,9 @@
 #include "port/host_ui.h"
 #include "port/disc_assets.h"
 #include "port/asset_bind.h"
+#ifdef PE2_PS5_HOST
+#include "port/ps5_paths.h"
+#endif
 #define STBTT_STATIC
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "ui/stb_truetype.h"
@@ -69,8 +72,14 @@ static void ensureRowVisible(void) {
 static void setPage(int page) { s_overlayState.page=page;s_overlayState.row=0;s_overlayState.scroll=0; }
 
 static void saveOptions(void) {
+    if(!*configPath)return;
     char temp[4120];
     snprintf(temp,sizeof temp,"%s.tmp",configPath);
+#ifdef PE2_PS5_HOST
+    if(!pePs5WritePathAllowed(temp)||!pePs5WritePathAllowed(configPath)) {
+        snprintf(statusText,sizeof statusText,"Preferences path rejected: %s",pePs5StorageReason());return;
+    }
+#endif
     FILE* f=fopen(temp,"w");
     if(!f) { snprintf(statusText,sizeof statusText,"Could not save preferences."); return; }
     fprintf(f,"disc1=%s\ndisc2=%s\nscale=%u\naspect=%d\ndither=%d\ngeometry=%d\naa=%d\nfilter=%d\nlight=%d\nvolume=%u\n",
@@ -79,15 +88,38 @@ static void saveOptions(void) {
         Psyz_VideoGetModelFiltering(),Psyz_VideoGetDynamicLighting(),Psyz_AudioGetOutputVolume());
     for(unsigned i=0;i<16;i++) fprintf(f,"key%u=%d\n",i,Psyz_GetKeyboardBinding_SDL3(i));
     int failed=ferror(f); if(fclose(f)) failed=1;
+#ifdef PE2_PS5_HOST
+    if(!pePs5WritePathAllowed(temp)||!pePs5WritePathAllowed(configPath))failed=1;
+#endif
     if(failed || rename(temp,configPath)) snprintf(statusText,sizeof statusText,"Could not save preferences.");
 }
 
 static void loadOptions(void) {
     configDir=getenv("PE2_CONFIG_DIR");
+#ifdef PE2_PS5_HOST
+    configDir=pePs5ConfigDirectory();
+    if(!configDir) { fprintf(stderr,"[ps5] Preferences unavailable: %s\n",pePs5StorageReason());configPath[0]=0;return; }
+#else
     if(!configDir) configDir=SDL_GetPrefPath("parasite-eve","parasite-eve-ii");
     if(!configDir) configDir=".";
+#endif
+#ifdef PE2_PS5_HOST
+    /* Checked helper already opened/created each descendant on existing USB. */
+    if(!pePs5WritePathAllowed(configDir)) {
+        fprintf(stderr,"[ps5] Preferences unavailable: %s\n",pePs5StorageReason());
+        configPath[0]=0;return;
+    }
+#else
     SDL_CreateDirectory(configDir);
+#endif
+#ifdef PE2_PS5_HOST
+    int configLength=snprintf(configPath,sizeof configPath,"%s/settings.ini",configDir);
+    if(configLength<0 || configLength>=(int)sizeof configPath) {
+        fprintf(stderr,"Preferences directory path is too long.\n");configPath[0]=0;return;
+    }
+#else
     snprintf(configPath,sizeof configPath,"%s/settings.ini",configDir);
+#endif
     FILE* f=fopen(configPath,"r"); if(!f)return;
     char line[8192];
     while(fgets(line,sizeof line,f)) {
@@ -128,7 +160,15 @@ static int preparePath(const char* path,char out[4096]) {
         SDL_free(absolute);
         if(length<0 || length>=(int)sizeof bin)return 0;
         /* Slot determined after validation; one temporary CUE per candidate. */
+#ifdef PE2_PS5_HOST
+        int cueLength=snprintf(out,4096,"%s/selected-image.cue",configDir);
+        if(cueLength<0||cueLength>=4096)return 0;
+#else
         snprintf(out,4096,"%s/selected-image.cue",configDir);
+#endif
+#ifdef PE2_PS5_HOST
+        if(!pePs5WritePathAllowed(out))return 0;
+#endif
         FILE* f=fopen(out,"w"); if(!f)return 0;
         fprintf(f,"FILE \"%s\" BINARY\n  TRACK 01 MODE2/2352\n    INDEX 01 00:00:00\n",bin);
         int failed=ferror(f); if(fclose(f))failed=1;
@@ -158,7 +198,16 @@ static int acceptPath(const char* path,int expected) {
     }
     const char* ext=strrchr(path,'.');
     if(ext && !SDL_strcasecmp(ext,".bin")) {
-        char stable[4096]; snprintf(stable,sizeof stable,"%s/disc%d.cue",configDir,number);
+        char stable[4096];
+#ifdef PE2_PS5_HOST
+        int stableLength=snprintf(stable,sizeof stable,"%s/disc%d.cue",configDir,number);
+        if(stableLength<0||stableLength>=(int)sizeof stable)return 0;
+#else
+        snprintf(stable,sizeof stable,"%s/disc%d.cue",configDir,number);
+#endif
+#ifdef PE2_PS5_HOST
+        if(!pePs5WritePathAllowed(cue)||!pePs5WritePathAllowed(stable))return 0;
+#endif
         if(rename(cue,stable))return 0;
         strcpy(cue,stable);
     }
@@ -257,7 +306,11 @@ static int refreshPanel(SDL_Window* window) {
     if(!OverlaySurfaceResize(&s_overlaySurface,layout.w,layout.h))return 0;
     paintPanel(&s_overlaySurface,&layout);
     if(getenv("PE2_DUMP_MENU")) {   /* development: the painted panel as a PPM (RGB over black), for a capture-free review */
+#ifdef PE2_PS5_HOST
+        FILE* f=pePs5WritePathAllowed(getenv("PE2_DUMP_MENU"))?fopen(getenv("PE2_DUMP_MENU"),"wb"):NULL;
+#else
         FILE* f=fopen(getenv("PE2_DUMP_MENU"),"wb");
+#endif
         if(f) {
             fprintf(f,"P6\n%d %d\n255\n",s_overlaySurface.w,s_overlaySurface.h);
             for(size_t i=0;i<(size_t)s_overlaySurface.w*s_overlaySurface.h;i++) {
@@ -405,6 +458,9 @@ static bool settingsEvent(const SDL_Event* e) {
 
 int peHostStartup(int argc,char** argv,const char** disc) {
     loadOptions();
+#ifdef PE2_PS5_HOST
+    if(!*configPath)return -1;
+#endif
     int menuOnly=0,validateOnly=0;
     const char* explicitDisc=getenv("PE2_DISC");
     const char* explicitDisc2=getenv("PE2_DISC2");
@@ -418,6 +474,30 @@ int peHostStartup(int argc,char** argv,const char** disc) {
     }
     if(explicitDisc && acceptPath(explicitDisc,1)!=1) {fprintf(stderr,"%s\n",statusText);return -1;}
     if(explicitDisc2 && acceptPath(explicitDisc2,2)!=2) {fprintf(stderr,"%s\n",statusText);return -1;}
+#ifdef PE2_PS5_HOST
+    /* Snapshot the complete default pair before acceptPath can normalize a raw
+     * BIN into a generated CUE under configDir. Never rediscover its companion
+     * from that generated CUE directory. Explicit paths keep their precedence. */
+    if(!*discPaths[0] && !*discPaths[1]) {
+        const char *pair[2]={pePs5FindDisc(1,NULL),pePs5FindDisc(2,NULL)};
+        if(pePs5DiscDiscoveryError()) { fprintf(stderr,"[ps5] %s\n",pePs5DiscDiscoveryReason());return -1; }
+        for(int i=0;i<2;i++)if(pair[i] && acceptPath(pair[i],i+1)!=i+1) {
+            fprintf(stderr,"%s\n",statusText);return -1;
+        }
+    } else for(int i=0;i<2;i++) if(!*discPaths[i]) {
+        const char *originalCompanion=i==1?explicitDisc:explicitDisc2;
+        const char* found=pePs5FindDisc(i+1,originalCompanion&&*originalCompanion?originalCompanion:discPaths[1-i]);
+        if(pePs5DiscDiscoveryError()) { fprintf(stderr,"[ps5] %s\n",pePs5DiscDiscoveryReason());return -1; }
+        if(found && acceptPath(found,i+1)!=i+1) {
+            fprintf(stderr,"%s\n",statusText);return -1;
+        }
+    }
+    if(!*discPaths[0]) {
+        fprintf(stderr,"[ps5] Put USA CUE/BIN pairs in "
+                       "/mnt/usb0/parasite-eve-ii, or configure PE2_DISC.\n");
+        return -1;
+    }
+#endif
     if(validateOnly) {
         for(int i=0;i<2;i++) {
             PeDisc* d=peDiscOpen(discPaths[i]);int number=peDiscNumber(d);peDiscClose(d);

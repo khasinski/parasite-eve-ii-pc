@@ -1,5 +1,10 @@
 # Third-Party Notices
 
+The optional native PS5 build also consumes public native runtime components
+under their own licenses, including GPL-3.0-or-later startup/layout/platform
+code. See [platform/ps5/NOTICES.md](platform/ps5/NOTICES.md); the combined
+native binary is not wholly CC0. Desktop dependency selection is unchanged.
+
 This repository's own code is released under CC0 1.0 ([LICENSE](LICENSE)). It contains and links the following work
 by others. These notices do not relicense the original game, which is not part of this repository.
 

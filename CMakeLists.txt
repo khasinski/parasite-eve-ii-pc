@@ -4,6 +4,10 @@ if(CMAKE_HOST_APPLE AND NOT DEFINED CMAKE_OSX_DEPLOYMENT_TARGET
     set(CMAKE_OSX_DEPLOYMENT_TARGET "15.0" CACHE STRING "Minimum supported macOS version")
 endif()
 project(parasite-eve-ii-pc VERSION 0.2.0 LANGUAGES C)
+option(PE2_PS5_HOST "Enable PS5 entry and storage integration (requires a PS5 PsyZ/SDL toolchain)" OFF)
+if(PE2_PS5_HOST)
+    include(cmake/ps5/host.cmake)
+endif()
 
 # Overlay packages and their variants define the same uninitialised globals in several objects. Apple's toolchain merges
 # those tentative definitions into one; GCC and Clang elsewhere need -fcommon to do the same, or the link fails with
@@ -22,9 +26,15 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS ON)
 
 # PsyZ: our fork of the PsyZ PSY-Q replacement (SDL3 video/audio/input, libgte, libcd, MDEC).
-set(PSYZ_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/psyz)
+set(PSYZ_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/psyz" CACHE PATH "PsyZ source root")
 add_subdirectory(${PSYZ_DIR}/psyz ${CMAKE_CURRENT_BINARY_DIR}/psyz)
 target_compile_definitions(psyz PRIVATE __psyz)
+if(PE2_PS5_HOST)
+    # The HTTP debugger is a desktop development service, not a game dependency.
+    get_target_property(_pe2_psyz_sources psyz SOURCES)
+    list(FILTER _pe2_psyz_sources EXCLUDE REGEX "src/dbgserver/dbgserver\\.c$")
+    set_property(TARGET psyz PROPERTY SOURCES "${_pe2_psyz_sources}")
+endif()
 
 if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
     # The original task/actor workspaces are accessed through several layout views.
@@ -48,6 +58,14 @@ if(PE_BUILD_GAME)
     include(cmake/game.cmake)
 else()
     message(STATUS "PE_BUILD_GAME is OFF: building the host tests only")
+endif()
+if(PE2_PS5_HOST)
+    # Host test executables are not console applications and must not inherit
+    # the application entry/link recipe or write console card directories.
+    if(NOT PE_BUILD_GAME)
+        message(FATAL_ERROR "PE2_PS5_HOST requires PE_BUILD_GAME=ON")
+    endif()
+    return()
 endif()
 
 

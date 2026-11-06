@@ -13,3 +13,5 @@ tools/match/difficult_functions   merge=union
 # cmd.exe wants its own line endings, in labels above all.
 *.bat text eol=crlf
 *.cmd text eol=crlf
+ # Nested unified-diff context lines intentionally contain one space.
+platform/ps5/patches/*.patch whitespace=-blank-at-eol

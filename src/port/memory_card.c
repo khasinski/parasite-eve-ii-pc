@@ -2,6 +2,9 @@
  * unmodified save-file bytes (15 x 8192-byte blocks), not a raw PS1 card image.
  * Override the per-user default with PE2_MEMORY_CARD_DIR for isolated replays. */
 #include "port/memory_card.h"
+#ifdef PE2_PS5_HOST
+#include "port/ps5_paths.h"
+#endif
 #include <libmcrd.h>
 #include <SDL3/SDL.h>
 #include <dirent.h>
@@ -92,6 +95,9 @@ static long cardDirectory(long channel, char* path)
 {
     if (!started || !cardRoot[0] || (channel != 0 && channel != 0x10)) return McErrCardNotExist;
     if (snprintf(path, PATH_MAX, "%s/card%d", cardRoot, channel == 0x10) >= PATH_MAX) return McErrCardInvalid;
+#ifdef PE2_PS5_HOST
+    if (!pePs5WritePathAllowed(path)) return McErrCardInvalid;
+#endif
     if (mkdir(path, 0700) != 0 && errno != EEXIST) return McErrCardInvalid;
     struct stat st;
     if (lstat(path, &st) != 0 || !S_ISDIR(st.st_mode)) return McErrCardInvalid;
@@ -109,6 +115,9 @@ static long filePath(long channel, const char* name, char* path)
     strncpy(filename, name, 20);
     filename[20] = 0;
     if (!validName(filename) || snprintf(path, PATH_MAX, "%s/%s", directory, filename) >= PATH_MAX) return McErrCardInvalid;
+#ifdef PE2_PS5_HOST
+    if (!pePs5WritePathAllowed(path)) return McErrCardInvalid;
+#endif
     return McErrNone;
 }
 
@@ -152,6 +161,9 @@ static long storeFile(const char* path, const void* data, size_t bytes)
     char temporary[PATH_MAX];
     const char* slash = strrchr(path, '/');
     if (!slash || snprintf(temporary, sizeof(temporary), "%.*s/.write-XXXXXX", (int)(slash - path), path) >= sizeof(temporary)) return McErrCardInvalid;
+#ifdef PE2_PS5_HOST
+    if (!pePs5WritePathAllowed(path) || !pePs5WritePathAllowed(temporary)) return McErrCardInvalid;
+#endif
     int fd = mkstemp(temporary);
     if (fd < 0) return McErrCardInvalid;
     const unsigned char* cursor = data;
@@ -166,7 +178,13 @@ static long storeFile(const char* path, const void* data, size_t bytes)
     }
     if (ok && fsync(fd) != 0) ok = 0;
     if (close(fd) != 0) ok = 0;
+#ifdef PE2_PS5_HOST
+    if (!pePs5WritePathAllowed(temporary) || !pePs5WritePathAllowed(path)) ok = 0;
+#endif
     if (ok && rename(temporary, path) == 0) return McErrNone;
+#ifdef PE2_PS5_HOST
+    if (pePs5WritePathAllowed(temporary))
+#endif
     unlink(temporary);
     return McErrCardInvalid;
 }
@@ -216,8 +234,18 @@ void MemCardInit(long unused)
     cardRoot[0] = 0;
     const char* override = getenv("PE2_MEMORY_CARD_DIR");
     char* allocated = NULL;
+#ifdef PE2_PS5_HOST
+    const char* root = pePs5CardDirectory();
+    if (!root) fprintf(stderr,"[ps5] Memory cards unavailable: %s\n",pePs5StorageReason());
+#else
     const char* root = override ? override : (allocated = SDL_GetPrefPath("parasite-eve-ii-port", "parasite-eve-ii"));
+#endif
+#ifdef PE2_PS5_HOST
+    /* Checked native helper already created and opened this directory. */
+    if (root && *root && strlen(root) < sizeof(cardRoot)) strcpy(cardRoot, root);
+#else
     if (root && *root && strlen(root) < sizeof(cardRoot) && (mkdir(root, 0700) == 0 || errno == EEXIST)) strcpy(cardRoot, root);
+#endif
     SDL_free(allocated);
 }
 void MemCardStart(void) { started = 1; }

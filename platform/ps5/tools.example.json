@@ -1,0 +1,11 @@
+{
+  "prefix": "C:/public-ps5-prefix",
+  "recipeSupport": "C:/reviewed-pe1-export/game-support",
+  "linkTemplate": "C:/reviewed-pe1-recipe/support/LINK-ARGS.template.rsp",
+  "sdlSource": "C:/public-ps5-prefix/sdl3-src",
+  "sdlBuild": "C:/public-ps5-prefix/build-sdl",
+  "sdlInstall": "C:/public-ps5-prefix/install-native-sdl",
+  "webpSource": "C:/public-webp-source",
+  "cmake": "C:/tools/cmake/bin/cmake.exe",
+  "ninja": "C:/tools/ninja/ninja.exe"
+}

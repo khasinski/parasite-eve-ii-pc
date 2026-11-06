@@ -1,0 +1,218 @@
+diff --git a/psyz/CMakeLists.txt b/psyz/CMakeLists.txt
+--- a/psyz/CMakeLists.txt
++++ b/psyz/CMakeLists.txt
+@@ -12,7 +12,7 @@
+ include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/ios.cmake)
+ include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/web.cmake)
+ 
+-if(NOT PSP)
++if(NOT PSP AND NOT TARGET SDL3::SDL3)
+     set(SDL_SHARED OFF CACHE BOOL "" FORCE)
+     set(SDL_STATIC ON CACHE BOOL "" FORCE)
+     set(SDL_TEST OFF CACHE BOOL "" FORCE)
+diff --git a/psyz/include/malloc.h b/psyz/include/malloc.h
+--- a/psyz/include/malloc.h
++++ b/psyz/include/malloc.h
+@@ -1,7 +1,11 @@
+ #ifndef MALLOC_H
+ #define MALLOC_H
+ #ifdef __psyz
+-#if defined(__has_include_next)
++#if defined(PE2_PS5_HOST)
++/* FreeBSD's compatibility malloc.h intentionally errors; the native allocator
++ * declarations live in stdlib.h. Keep the retail/non-PS5 branches intact. */
++#include <stdlib.h>
++#elif defined(__has_include_next)
+ #if __has_include_next(<malloc.h>)
+ #include_next <malloc.h>
+ #endif
+diff --git a/psyz/src/platform/sdl3_gpu.c b/psyz/src/platform/sdl3_gpu.c
+--- a/psyz/src/platform/sdl3_gpu.c
++++ b/psyz/src/platform/sdl3_gpu.c
+@@ -438,6 +438,11 @@
+ }
+ 
+ static SDL_GPUCommandBuffer* AcquireCmd(void) {
++#ifdef PE2_PS5_HOST
++    /* Initialization already reports its original error. Do not repeatedly
++     * invoke SDL with a null device (or fsync the same failure every draw). */
++    if (!device) return NULL;
++#endif
+     if (!pending_cmd) {
+         command_descriptors = 0;
+         pending_cmd = SDL_AcquireGPUCommandBuffer(device);
+@@ -448,11 +453,13 @@
+     return pending_cmd;
+ }
+ 
+-static void SubmitCmd(void) {
++static bool SubmitCmd(void) {
+     if (pending_cmd) {
+-        SDL_SubmitGPUCommandBuffer(pending_cmd);
++        bool submitted = SDL_SubmitGPUCommandBuffer(pending_cmd);
+         pending_cmd = NULL;
+-    }
++        return submitted;
++    }
++    return false;
+ }
+ 
+ int Psyz_GpuGetSpriteAtlasesEnabled(void) {return sprite_atlases_enabled;}
+@@ -654,7 +661,22 @@
+         return;
+     }
+     if (swapchain_ok && frame_presented) {
+-        SubmitCmd();
++        bool submitted = SubmitCmd();
++#ifdef PE2_PS5_HOST
++        /* The shell handoff follows an accepted normal display submission,
++         * never a mere upload/fence. Same bounded policy as PE1's native host. */
++        extern int sceSystemServiceHideSplashScreen(void);
++        static bool handoffDone;
++        static unsigned handoffAttempts;
++        if (submitted && !handoffDone && handoffAttempts < 3) {
++            ++handoffAttempts;
++            int result = sceSystemServiceHideSplashScreen();
++            handoffDone = result == 0;
++            INFOF("PE2 display handoff: result=0x%08x attempt=%u", (unsigned)result, handoffAttempts);
++        }
++#else
++        (void)submitted;
++#endif
+         return;
+     }
+     SDL_GPUFence** fence = &frame_fences[frame_fence_idx];
+@@ -987,6 +1009,22 @@
+     return shaders_ok && pipe_clear;
+ }
+ 
++#ifdef PE2_PS5_HOST
++/* A native title cannot continue with a partially initialized renderer. Keep
++ * the originating SDL error across cleanup and retain the failed-attempt
++ * latch, so a later draw cannot turn failure into an implicit retry. */
++static bool FailNativePlatformInit(const char* stage) {
++    char error[512];
++    SDL_strlcpy(error, SDL_GetError(), sizeof(error));
++    QuitPlatform();
++    is_platform_initialized = true;
++    is_platform_init_successful = false;
++    SDL_SetError("%s: %s", stage, error);
++    ERRORF("Native PS5 renderer initialization failed: %s", SDL_GetError());
++    return false;
++}
++#endif
++
+ bool InitPlatform() {
+     if (is_platform_initialized) {
+         return is_platform_init_successful;
+@@ -996,6 +1034,13 @@
+     const char* headless = SDL_getenv("PSYZ_HEADLESS");
+     headless_renderer = headless && strcmp(headless, "1") == 0;
+     hidden_gpu_renderer = headless && strcmp(headless, "gpu") == 0;
++#ifdef PE2_PS5_HOST
++    if (headless_renderer || hidden_gpu_renderer) {
++        headless_renderer = hidden_gpu_renderer = false;
++        SDL_SetError("native PS5 titles require visible GPU presentation; PSYZ_HEADLESS is unsupported");
++        return FailNativePlatformInit("presentation mode");
++    }
++#endif
+     if (headless_renderer) {
+         if (!SDL_Init(SDL_INIT_EVENTS))
+             return false;
+@@ -1008,9 +1053,30 @@
+ 
+     if (!SDL_Init(SDL_INIT_VIDEO)) {
+         ERRORF("SDL_Init: %s", SDL_GetError());
++#ifdef PE2_PS5_HOST
++        return FailNativePlatformInit("SDL video");
++#else
+         return false;
+-    }
+-
++#endif
++    }
++
++    #ifdef PE2_PS5_HOST
++    /* Matching native SDL explicitly admits the reviewed PS5 RADV device's
++     * nonconformant version report; capability checks still run normally. */
++    SDL_PropertiesID properties = SDL_CreateProperties();
++    device = NULL;
++    if (properties) {
++        if (SDL_SetBooleanProperty(properties, SDL_PROP_GPU_DEVICE_CREATE_SHADERS_SPIRV_BOOLEAN, true) &&
++            SDL_SetBooleanProperty(properties, SDL_PROP_GPU_DEVICE_CREATE_DEBUGMODE_BOOLEAN, false) &&
++            SDL_SetBooleanProperty(properties, CPE_PROP_GPU_DEVICE_CREATE_PS5_RADV_NONCONFORMANT_BOOLEAN, true)) {
++            device = SDL_CreateGPUDeviceWithProperties(properties);
++        }
++        char error[512];
++        if (!device) SDL_strlcpy(error, SDL_GetError(), sizeof error);
++        SDL_DestroyProperties(properties);
++        if (!device) SDL_SetError("%s", error);
++    }
++    #else
+     device = SDL_CreateGPUDevice(
+ #if defined(_WIN32)
+         SDL_GPU_SHADERFORMAT_DXIL,
+@@ -1020,9 +1086,14 @@
+         SDL_GPU_SHADERFORMAT_SPIRV,
+ #endif
+         false, NULL);
++    #endif
+     if (!device) {
+         ERRORF("SDL_CreateGPUDevice: %s", SDL_GetError());
++#ifdef PE2_PS5_HOST
++        return FailNativePlatformInit("GPU device");
++#else
+         return false;
++#endif
+     }
+     INFOF("SDL_GPU with driver %s", SDL_GetGPUDeviceDriver(device));
+     command_descriptor_limit =
+@@ -1049,7 +1120,11 @@
+         window_title, DEFAULT_FRONT_W, DEFAULT_FRONT_H, window_flags);
+     if (!sdl3_window) {
+         ERRORF("SDL_CreateWindow: %s", SDL_GetError());
++#ifdef PE2_PS5_HOST
++        return FailNativePlatformInit("GPU window");
++#else
+         return false;
++#endif
+     }
+ 
+     // useful for offscreen rendering with SDL_VIDEODRIVER=offscreen
+@@ -1058,7 +1133,11 @@
+     if (swapchain_ok) {
+         swapchain_present_mode = SDL_GPU_PRESENTMODE_VSYNC;
+     } else if (!hidden_gpu_renderer) {
++#ifdef PE2_PS5_HOST
++        return FailNativePlatformInit("GPU window claim");
++#else
+         WARNF("no swapchain, presentation disabled: %s", SDL_GetError());
++#endif
+     }
+ 
+     SDL_SetAtomicInt(&swapchain_resize_pending, 0);
+@@ -1067,7 +1146,11 @@
+     swapchain_window_fullscreen = SDL_GetWindowFlags(sdl3_window) & SDL_WINDOW_FULLSCREEN;
+ 
+     if (!CreateGpuResources()) {
++#ifdef PE2_PS5_HOST
++        return FailNativePlatformInit("GPU resources");
++#else
+         return false;
++#endif
+     }
+ 
+     cur_tpage = 0;
+@@ -1903,7 +1986,12 @@
+         SubmitCmdAndWait();
+         Draw_ResetBuffer();
+     }
++#ifdef PE2_PS5_HOST
++    /* A partial initialization has not called the overlay's init callback. */
++    if (is_platform_init_successful && overlay_destroy_cb) {
++#else
+     if (overlay_destroy_cb) {
++#endif
+         overlay_destroy_cb();
+     }
+     if (device) {
