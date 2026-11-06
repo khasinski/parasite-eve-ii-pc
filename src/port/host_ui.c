@@ -45,8 +45,8 @@ static const Color kPanel={0.075f,0.082f,0.102f,0.96f}, kText={0.93f,0.95f,0.98f
 static char discPaths[2][4096], configPath[4096], statusText[256];
 static int requiredDisc, selectedDisc;
 static const char* const pages[]={"Graphics","Controls","Audio","Discs"};
-static const char* const buttons[]={"Select","L3","R3","Start","Up","Right","Down","Left",
-    "L2","R2","L1","R1","Triangle","Circle","Cross","Square"};
+static const char* const buttons[]={"L2","R2","L1","R1","Triangle","Circle","Cross","Square",
+    "Select","L3","R3","Start","Up","Right","Down","Left"};
 static const char* configDir;
 static PsyzOverlayEventFilter_SDL3 previousFilter;
 static SDL_Window* uiWindow;
