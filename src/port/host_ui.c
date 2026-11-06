@@ -97,7 +97,7 @@ static void loadOptions(void) {
             if(strlen(eq)<sizeof discPaths[0]) strcpy(discPaths[line[4]-'1'],eq);
             continue;
         }
-        char* end; long n=strtol(eq,&end,10); if(*end)continue;
+        char* end; long n=strtol(eq,&end,10); if(end==eq || *end)continue;
         if(!strcmp(line,"scale") && n>=1 && n<=8) Psyz_VideoSetInternalResolution((unsigned)n);
         else if(!strcmp(line,"aspect") && n>=0 && n<=1) Psyz_VideoSetAspectMode(n);
         else if(!strcmp(line,"dither") && n>=0 && n<=1) Psyz_VideoSetDitheringMode(n);
