@@ -37,6 +37,8 @@ static int cueBinPath(const char* cue, char* out, size_t cap)
         char* e = q ? strchr(q + 1, '"') : NULL;
         if (strncmp(start, "FILE", 4) == 0 && q && e) {
             const char* slash = strrchr(cue, '/');
+            const char* backslash = strrchr(cue, '\\');
+            if (backslash && (!slash || backslash > slash)) slash = backslash;
             size_t      dir = slash ? (size_t)(slash - cue + 1) : 0;
             *e = 0;
             if (q[1] == '/' || q[1] == '\\' || (q[1] && q[2] == ':')) dir = 0;

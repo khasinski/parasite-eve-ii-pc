@@ -117,15 +117,20 @@ static void loadOptions(void) {
 
 /* Raw BINs are presented to the SDK through a generated CUE in preferences.
  * The user's image is opened read-only and is never modified. */
+/* Preserve the existing host absolute-form policy for BIN and CUE alike. */
+static int discPathIsAbsolute(const char* path) {
+    return path[0]=='/' || path[0]=='\\' || (path[0] && path[1]==':');
+}
 static int preparePath(const char* path,char out[4096]) {
     if(strlen(path)>=4096 || strpbrk(path,"\r\n\"")) return 0;
     const char* ext=strrchr(path,'.');
     if(ext && !SDL_strcasecmp(ext,".bin")) {
-        char* absolute=SDL_GetCurrentDirectory();
+        int isAbsolute=discPathIsAbsolute(path);
+        char* directory=isAbsolute?NULL:SDL_GetCurrentDirectory();
         char bin[4096];
-        int length=path[0]=='/'?snprintf(bin,sizeof bin,"%s",path):
-            snprintf(bin,sizeof bin,"%s%s",absolute?absolute:"",path);
-        SDL_free(absolute);
+        int length=isAbsolute?snprintf(bin,sizeof bin,"%s",path):
+            snprintf(bin,sizeof bin,"%s%s",directory?directory:"",path);
+        SDL_free(directory);
         if(length<0 || length>=(int)sizeof bin)return 0;
         /* Slot determined after validation; one temporary CUE per candidate. */
         snprintf(out,4096,"%s/selected-image.cue",configDir);
@@ -134,7 +139,7 @@ static int preparePath(const char* path,char out[4096]) {
         int failed=ferror(f); if(fclose(f))failed=1;
         return !failed;
     }
-    if(path[0]=='/' || path[0]=='\\' || (path[0] && path[1]==':'))strcpy(out,path);
+    if(discPathIsAbsolute(path))strcpy(out,path);
     else {
         char* directory=SDL_GetCurrentDirectory();
         int length=snprintf(out,4096,"%s%s",directory?directory:"",path);
