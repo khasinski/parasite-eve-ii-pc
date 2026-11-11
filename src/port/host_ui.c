@@ -578,8 +578,11 @@ int peHostStartup(int argc,char** argv,const char** disc) {
     openLog(argc,argv);
     int menuOnly=0,validateOnly=0,widescreenSeen=0,hdSeen=0;
     const char* hdEnvironment=getenv("PE2_HD_BACKGROUNDS");
+    /* Launchers may export an empty variable for a disc the player skipped. */
     const char* explicitDisc=getenv("PE2_DISC");
     const char* explicitDisc2=getenv("PE2_DISC2");
+    if(explicitDisc && !*explicitDisc)explicitDisc=NULL;
+    if(explicitDisc2 && !*explicitDisc2)explicitDisc2=NULL;
     for(int i=1;i<argc;i++) {
         if(!strcmp(argv[i],"--host-menu"))menuOnly=1;
         else if(!strcmp(argv[i],"--validate-discs"))validateOnly=1;
