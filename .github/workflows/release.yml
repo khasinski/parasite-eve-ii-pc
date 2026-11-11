@@ -115,7 +115,7 @@ jobs:
           editor=Parasite-Eve-II-Save-Editor-${version}-linux-${{ matrix.arch }}
           mkdir -p "dist/$name" "dist/$editor"
           cp build/parasite-eve-ii-pc "dist/$name/"
-          cp README.md LICENSE THIRD_PARTY_NOTICES.md CHANGELOG.md "dist/$name/"
+          cp README.md LICENSE THIRD_PARTY_NOTICES.md CHANGELOG.md recomplauncher.json "dist/$name/"
           ldd build/parasite-eve-ii-pc > "dist/$name/runtime-dependencies.txt"
           git rev-parse HEAD > "dist/$name/source-commit.txt"
           cp save-editor/target/release/pe2-save-editor LICENSE "dist/$editor/"
@@ -179,7 +179,7 @@ jobs:
           $game = "dist/Parasite-Eve-II-$version-windows-x86_64"
           $editor = "dist/Parasite-Eve-II-Save-Editor-$version-windows-x86_64"
           New-Item -ItemType Directory -Force $game, $editor | Out-Null
-          Copy-Item build/parasite-eve-ii-pc.exe, README.md, LICENSE, THIRD_PARTY_NOTICES.md, CHANGELOG.md $game
+          Copy-Item build/parasite-eve-ii-pc.exe, README.md, LICENSE, THIRD_PARTY_NOTICES.md, CHANGELOG.md, recomplauncher.json $game
           git rev-parse HEAD | Set-Content "$game/source-commit.txt"
           Copy-Item save-editor/target/release/pe2-save-editor.exe, LICENSE $editor
           'Open pe2-save-editor.exe to edit a COPY of your save. Untested against retail saves.' | Set-Content "$editor/Read me.txt"

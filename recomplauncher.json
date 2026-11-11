@@ -1,0 +1,53 @@
+{
+  "$schema": "https://recomplauncher.com/schema/recomplauncher.json",
+  "format": 1,
+  "name": "Parasite Eve II",
+  "repo": "khasinski/parasite-eve-ii-pc",
+  "inputs": [
+    {
+      "id": "disc1",
+      "label": "Your North American Parasite Eve II Disc 1 (CUE sheet, with its BIN file next to it).",
+      "role": "disc",
+      "formats": [{ "type": "file", "extensions": ["cue", "bin"] }]
+    },
+    {
+      "id": "disc2",
+      "label": "Your North American Parasite Eve II Disc 2 (CUE sheet). Only the last two stages need it, so you can skip it for now.",
+      "role": "disc",
+      "optional": true,
+      "formats": [{ "type": "file", "extensions": ["cue", "bin"] }]
+    }
+  ],
+  "start": {
+    "program": [
+      "parasite-eve-ii-pc.exe",
+      "parasite-eve-ii-pc",
+      "Parasite Eve II.app/Contents/MacOS/Parasite Eve II"
+    ],
+    "args": ["--disc", "{input:disc1}"],
+    "env": { "PE2_DISC2": "{input:disc2}" }
+  },
+  "saves": [
+    "{config}/parasite-eve-ii-port/parasite-eve-ii",
+    "{local}/parasite-eve-ii-port/parasite-eve-ii"
+  ],
+  "folders": {
+    "logs": [
+      { "path": "{local}/parasite-eve/parasite-eve-ii", "if": "{local}/parasite-eve/parasite-eve-ii" },
+      { "path": "{config}/parasite-eve/parasite-eve-ii" }
+    ]
+  },
+  "settings": [
+    {
+      "id": "picture",
+      "label": "Picture shape",
+      "in": "args",
+      "help": "Classic 4:3 is the console's own. 16:9 widens the view and raises Picture detail to at least 2x.",
+      "choices": [
+        { "label": "Game's setting", "args": [] },
+        { "label": "4:3", "args": ["--widescreen", "0"] },
+        { "label": "16:9", "args": ["--widescreen", "1"] }
+      ]
+    }
+  ]
+}
