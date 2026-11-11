@@ -32,7 +32,7 @@ if [ -n "$editor" ]; then
     cp "$root/packaging/macos/ParasiteEveII.icns" "$editor_app/Contents/Resources/"
     sed "s/@VERSION@/${version}/g" "$root/packaging/macos/SaveEditor-Info.plist.in" > "$editor_app/Contents/Info.plist"
 fi
-cp "$root/README.md" "$root/LICENSE" "$root/THIRD_PARTY_NOTICES.md" "$root/CHANGELOG.md" "$stage/"
+cp "$root/README.md" "$root/LICENSE" "$root/THIRD_PARTY_NOTICES.md" "$root/CHANGELOG.md" "$root/recomplauncher.json" "$stage/"
 cat > "$stage/START-HERE.txt" <<TXT
 Parasite Eve II, native port (unofficial, alpha). This archive contains no game data.
 You need your own North American CUE/BIN images of both discs.
