@@ -2,6 +2,8 @@
 
 [![native-c](https://github.com/khasinski/parasite-eve-ii-pc/actions/workflows/pc.yml/badge.svg)](https://github.com/khasinski/parasite-eve-ii-pc/actions/workflows/pc.yml)
 
+<a href="https://recomplauncher.com/game/parasite-eve-ii-pc"><picture><source media="(prefers-color-scheme: dark)" srcset="https://recomplauncher.com/assets/press/launcher/badge-light.svg"><img alt="Get it on RecompLauncher" src="https://recomplauncher.com/assets/press/launcher/badge-dark.svg" height="48"></picture></a>
+
 A native PC port of *Parasite Eve II* (PlayStation, USA release), built from the matching decompilation of the
 original game code and [our PsyZ fork](https://github.com/khasinski/parasite-eve-psyz), a drop-in replacement for the
 PlayStation runtime library (Psy-Q) on top of SDL3. It follows the architecture of
