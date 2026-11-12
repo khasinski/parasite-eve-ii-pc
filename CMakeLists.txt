@@ -239,6 +239,13 @@ add_custom_target(portable_audio_tests DEPENDS audio_startup_test)
 set_tests_properties(audio_startup_test PROPERTIES LABELS "portable-audio")
 add_custom_target(portable_gameplay_tests DEPENDS gallery_wave_ownership_test fixed_log_test)
 set_tests_properties(gallery_wave_ownership_test fixed_log_test PROPERTIES LABELS "portable-gameplay")
+if(CMAKE_C_COMPILER_ID STREQUAL "GNU" AND NOT MINGW)
+    # GCC ASan retains global course/descriptor tables from the included room
+    # unit. Remove unrelated callbacks before instrumentation, keeping address
+    # and undefined-behaviour checks enabled on the ownership fixture itself.
+    target_compile_options(gallery_wave_ownership_test PRIVATE -flto)
+    target_link_options(gallery_wave_ownership_test PRIVATE -flto)
+endif()
 if(MINGW)
     # These fixtures retain only selected paths from complete gameplay units,
     # like scene_timing_buffer_test above. Do not retain unrelated COFF unwind
