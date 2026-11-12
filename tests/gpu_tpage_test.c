@@ -43,7 +43,14 @@ int main(void)
         addPrim(&ot[1], &corner); addPrim(&ot[1], &poly); addPrim(&ot[1], &mode);
         DrawOTag(&ot[3]); DrawSync(0);
         RECT sample = {32,16,8,8}; StoreImage(&sample, (u_long*)actual); DrawSync(0);
-        for (int i = 0; i < 64; ++i) CHECK(actual[i] == 0x03e0);
+        for (int i = 0; i < 64; ++i) {
+            /* This fixture checks texture-page selection, independent of the
+             * backend's framebuffer alpha/mask representation. */
+            if ((actual[i] & 0x7fff) != 0x03e0) {
+                fprintf(stderr, "polygon kind %d, sprite pixel %d: expected 03e0, got %04x\n", kind, i, actual[i]);
+                exit(1);
+            }
+        }
     }
     puts("GPU TPage: FT3/FT4/GT3/GT4 select the subsequent 8x8 sprite texture page OK");
     return 0;

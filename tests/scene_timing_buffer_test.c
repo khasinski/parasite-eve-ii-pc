@@ -14,11 +14,27 @@ u8 *gFsActorBuffer0Base,*gFsActorBuffer1Base,*gFsActorBuffer2Base;
 s32 gAkropolisStageMovieWorkspaceBytesByArea[21],gMapDryfieldMovieWorkspaceBytesByArea[32],gMapNeoArkMovieWorkspaceBytesByArea[21];
 static u32 allocation[4][512];
 static unsigned allocations;
+static u16 vlcAllocations[2][STREAM_VLC_TABLE_BYTES/sizeof(u16)];
+static unsigned vlcAllocationCount,vlcBuilds;
 static int failAllocation;
 static unsigned movieQueries;
-void* memMalloc(size_t size,bool aux) {CHECK(aux);if(failAllocation)return NULL;CHECK(size==sizeof allocation[0]);CHECK(allocations<4);u32* result=allocation[allocations++];memset(result,0xa5,size);return result;}
+void* memMalloc(size_t size,bool aux)
+{
+    CHECK(aux);
+    if(failAllocation)return NULL;
+    void* result;
+    if(size==STREAM_VLC_TABLE_BYTES) {
+        CHECK(vlcAllocationCount<2);
+        result=vlcAllocations[vlcAllocationCount++];
+    } else {
+        CHECK(size==sizeof allocation[0] && allocations<4);
+        result=allocation[allocations++];
+    }
+    memset(result,0xa5,size);
+    return result;
+}
 s16 streamFindMovieSlot(const GameLocationKey* key,s32 sub,s32 required) {(void)key;(void)sub;(void)required;++movieQueries;return -1;}
-void DecDCTvlcBuild(u_short* table) {(void)table;abort();}
+void DecDCTvlcBuild(u_short* table) {++vlcBuilds;memset(table,0x6b,STREAM_VLC_TABLE_BYTES);}
 int main(void)
 {
     static u32 actor[3][STREAM_VLC_TABLE_BYTES/sizeof(u32)+512];StreamSlot stream={0};
@@ -52,5 +68,39 @@ int main(void)
     gCdCmdQueue.sceneVlcTableMode=STREAM_SCENE_VLC_RESERVED_TABLE;
     stream.data.scene.vlcBufferKind=STREAM_VLC_BUFFER_ALLOCATE;
     CHECK(!cdCmdEnsurePlaybackBuffers());
+    /* Re-entering a camera allocates a new table even when the preceding
+     * camera's table was built. Poisoned fresh storage must be initialized. */
+    failAllocation=0;
+    memset(&gCdCmdQueue,0,sizeof gCdCmdQueue);
+    stream.control.scene.timingBufferKind=STREAM_TIMING_BUFFER_NONE;
+    stream.data.scene.vlcBufferKind=STREAM_VLC_BUFFER_ALLOCATE;
+    gCdCmdQueue.sceneStream=&stream;
+    gCdCmdQueue.sceneBuffersNeeded=1;
+    gCdCmdQueue.sceneVlcTableMode=STREAM_SCENE_VLC_RESERVED_TABLE;
+    gCdCmdQueue.vlcTableBuilt=1;
+    cdCmdReservePlaybackBuffers();
+    CHECK(vlcAllocationCount==1 && vlcBuilds==1 && gCdCmdQueue.vlcTable[0]==0x6b6b);
+    u16* firstTable=gCdCmdQueue.vlcTable;
+    cdCmdReservePlaybackBuffers();
+    CHECK(vlcAllocationCount==2 && vlcBuilds==2 && gCdCmdQueue.vlcTable!=firstTable);
+    CHECK(gCdCmdQueue.vlcTable[0]==0x6b6b);
+    /* A prefetched compressed image outlives the transient view allocations.
+     * Re-reserving a camera must not point its retained header at empty bytes. */
+    memset(&gCdCmdQueue,0,sizeof gCdCmdQueue);
+    allocations=0;
+    gCdCmdQueue.sceneStream=&stream;
+    gCdCmdQueue.sceneBuffersNeeded=1;
+    gCdCmdQueue.sceneVlcTableMode=STREAM_SCENE_VLC_IMAGE_BUFFER;
+    gCdCmdQueue.decodeBufferBytes=sizeof allocation[0];
+    cdCmdReservePlaybackBuffers();
+    u8* prefetched=gCdCmdQueue.decodeBuffer;
+    CHECK(prefetched!=NULL);
+    memset(prefetched,0x3c,sizeof allocation[0]);
+    gCdCmdQueue.sceneImageHeaders[0].sectorCount=1;
+    gCdCmdQueue.sceneImageHeaders[0].viewId=16;
+    cdCmdReservePlaybackBuffers();
+    CHECK(allocations==2); /* Keep the game's original heap reservations. */
+    CHECK(gCdCmdQueue.decodeBuffer==prefetched);
+    for(unsigned i=0;i<sizeof allocation[0];++i)CHECK(prefetched[i]==0x3c);
     puts("Scene timing: poisoned allocated/borrowed buffers start terminated; VLC prefix and payload preserved");return 0;
 }

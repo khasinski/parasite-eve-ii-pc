@@ -690,13 +690,13 @@ s32 worldCollisionResolveResponsePushback(const WorldCollisionContact* contacts,
 
     // Convert the 12-bit products to a 16.16 correction; the edge slide applies only without an ordinary overlap.
     if (overlapCount != 0) {
-        delta->fixed.vx.word = (scratch->corrections[WORLD_COLLISION_RESPONSE_PUSHBACK_OVERLAP].vx + scratch->corrections[WORLD_COLLISION_RESPONSE_PUSHBACK_FLOOR].vx) << WORLD_COLLISION_PUSHBACK_FRACTION_SHIFT;
+        delta->fixed.vx.word = (s32)((u32)(scratch->corrections[WORLD_COLLISION_RESPONSE_PUSHBACK_OVERLAP].vx + scratch->corrections[WORLD_COLLISION_RESPONSE_PUSHBACK_FLOOR].vx) << WORLD_COLLISION_PUSHBACK_FRACTION_SHIFT);
         delta->fixed.vy.word = (s32)((u32)(scratch->corrections[WORLD_COLLISION_RESPONSE_PUSHBACK_OVERLAP].vy + scratch->corrections[WORLD_COLLISION_RESPONSE_PUSHBACK_FLOOR].vy) << WORLD_COLLISION_PUSHBACK_FRACTION_SHIFT);
-        delta->fixed.vz.word = (scratch->corrections[WORLD_COLLISION_RESPONSE_PUSHBACK_OVERLAP].vz + scratch->corrections[WORLD_COLLISION_RESPONSE_PUSHBACK_FLOOR].vz) << WORLD_COLLISION_PUSHBACK_FRACTION_SHIFT;
+        delta->fixed.vz.word = (s32)((u32)(scratch->corrections[WORLD_COLLISION_RESPONSE_PUSHBACK_OVERLAP].vz + scratch->corrections[WORLD_COLLISION_RESPONSE_PUSHBACK_FLOOR].vz) << WORLD_COLLISION_PUSHBACK_FRACTION_SHIFT);
     } else {
-        delta->fixed.vx.word = (scratch->corrections[WORLD_COLLISION_RESPONSE_PUSHBACK_FLOOR].vx + scratch->corrections[WORLD_COLLISION_RESPONSE_PUSHBACK_EDGE].vx) << WORLD_COLLISION_PUSHBACK_FRACTION_SHIFT;
+        delta->fixed.vx.word = (s32)((u32)(scratch->corrections[WORLD_COLLISION_RESPONSE_PUSHBACK_FLOOR].vx + scratch->corrections[WORLD_COLLISION_RESPONSE_PUSHBACK_EDGE].vx) << WORLD_COLLISION_PUSHBACK_FRACTION_SHIFT);
         delta->fixed.vy.word = (s32)((u32)(scratch->corrections[WORLD_COLLISION_RESPONSE_PUSHBACK_FLOOR].vy + scratch->corrections[WORLD_COLLISION_RESPONSE_PUSHBACK_EDGE].vy) << WORLD_COLLISION_PUSHBACK_FRACTION_SHIFT);
-        delta->fixed.vz.word = (scratch->corrections[WORLD_COLLISION_RESPONSE_PUSHBACK_FLOOR].vz + scratch->corrections[WORLD_COLLISION_RESPONSE_PUSHBACK_EDGE].vz) << WORLD_COLLISION_PUSHBACK_FRACTION_SHIFT;
+        delta->fixed.vz.word = (s32)((u32)(scratch->corrections[WORLD_COLLISION_RESPONSE_PUSHBACK_FLOOR].vz + scratch->corrections[WORLD_COLLISION_RESPONSE_PUSHBACK_EDGE].vz) << WORLD_COLLISION_PUSHBACK_FRACTION_SHIFT);
     }
 
     SCRATCH_STACK_RELEASE_BLOCK(_WorldCollisionResponsePushbackScratch);

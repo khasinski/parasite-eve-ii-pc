@@ -2435,3 +2435,68 @@ The 53 C host tests and normal-build settings painter checks pass. These are
 scoped controls for the native widescreen implementation, not whole-game or
 physical Windows/Linux GPU certification. Production extended artwork and the
 broader historical HD distribution/artwork work remain separate unfinished work.
+
+### Decorative side artwork pilot (2026-11-12)
+
+The PE1 reference workflow (`docs/HD_BACKGROUNDS.md` and
+`docs/assets/hd-widescreen/prepare.py` in that project) preserves the native
+center, registers generated artwork, rejects uncovered margins, and treats
+animation and foreground occlusion as separate acceptance gates. Registration
+and seam color statistics alone do not establish architectural continuity.
+
+PE2 now requests `Psyz_VideoSetWidescreenNativePolygons(1)`: GPU polygon draws
+are clipped to the original display rectangle while wide sprite backgrounds
+remain visible. The native VRAM target and simulation are unchanged. This is a
+conservative decorative-side policy: actors crossing the original edge are
+cropped, not allowed to walk visibly into unvalidated side artwork. It also
+clips polygon effects; it is not per-actor visibility detection or a foreground
+mask implementation. The SDK option defaults off for other games.
+
+Build the optional `native_polygon_clip_probe` and run:
+
+```sh
+venv/bin/python tools/hd/check_polygon_clip.py \
+  --output build-hd-study/polygon-clip-check
+```
+
+This uses `PSYZ_HEADLESS=gpu`, tests both display buffers, outside and crossing
+polygons, a following wide sprite, classic pixel parity, and native VRAM parity.
+
+The private MIST view 8 sample and built-in imagegen output are under
+`build-hd-study/art/mist-shooting-gallery-view8-sides/v2/`. Its exact native
+center is restored after registration. The artwork remains unapproved:
+neighbouring camera transitions, dialogue, actor trajectories, animated states
+and foreground masks still require review before broader distribution.
+
+### Stability: reject mismatched native reference planes
+
+Base-atlas loading checks the PNG's native reference plane against the current
+decoded RGB555 image, in addition to metadata identity, dimensions and material
+opacity. All native samples, their alpha and edge gutters must match; side
+reference cells must remain transparent. A mismatched/corrupt reference rejects
+the atlas and uses the original background. This catches independently replaced
+metadata/PNG files; it cannot detect incorrect authored material paired with a
+valid native reference, or prove correct scene-loader sequencing.
+
+`check_presenter.py` includes mismatched reference color, gutter and alpha
+regressions. The color case fails before this change and all eleven malformed
+pack cases fall back afterwards. Private evidence is in
+`build-hd-study/stability-20261112/reference-before` and `reference-final`.
+A separate normal-controller firing checkpoint on the MIST course compares
+4:3/wide at 4x, without HD art: native VRAM, simulation and model poses match.
+That initial checkpoint did not reproduce the reported reticle glitch.
+Subsequent runtime reproductions confirmed missing host GPU packet-length
+handling in all 120 overlay variants, incorrect fixed-size meter sprite
+lengths, stale VLC initialization and scene decode-buffer lifetime issues.
+The variant build now includes `port/gpu_len.h`; the scene allocator keeps
+native compressed input stable and rebuilds freshly allocated VLC tables.
+Empty scene-image cache entries cannot match view zero.
+
+`hud_hp_packet_test`, `scene_timing_buffer_test` and
+`scene_image_timeout_test` cover these regressions. Owner-disc replays of
+Rupert's arrival, No. 9 combat and the Fire Escape reticle now select the
+expected backgrounds; Metal, Linux Vulkan and Linux OpenGL agree on all
+three background keys and simulation checkpoints. OpenGL menu open/close
+also preserves the rendered frame and simulation. Windows builds and
+portable tests were checked under Wine, not a native Windows GPU driver.
+Artwork work remains on hold.

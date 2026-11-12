@@ -601,6 +601,7 @@ void itemMenuDrawMeter(const UiPanel* panel, s32 left, s32 right, s32 centerY, s
         centerY   = centerY - 4;
         frameClut = ITEM_MENU_METER_FRAME_CLUT;
 
+        // Reserve a full SPRT slot, but send only the fixed-size SPRT_8 payload.
         capSprite       = gGpuPrimCursor;
         gGpuPrimCursor  = capSprite + 1;
         capSprite->x0   = left;
@@ -608,7 +609,7 @@ void itemMenuDrawMeter(const UiPanel* panel, s32 left, s32 right, s32 centerY, s
         capSprite->u0   = 0x98;
         capSprite->v0   = 0x68;
         capSprite->clut = frameClut;
-        setlen(capSprite, 3);
+        setlen((SPRT_8*)capSprite, 3);
         setcode(capSprite, 0x75);
         addPrim(gGpuCurrentOt + panel->otIndex.signedValue + 1, capSprite);
 
@@ -620,7 +621,7 @@ void itemMenuDrawMeter(const UiPanel* panel, s32 left, s32 right, s32 centerY, s
         capSprite->u0   = 0xA8;
         capSprite->v0   = 0x68;
         capSprite->clut = frameClut;
-        setlen(capSprite, 3);
+        setlen((SPRT_8*)capSprite, 3);
         setcode(capSprite, 0x75);
         addPrim(gGpuCurrentOt + panel->otIndex.signedValue + 1, capSprite);
 

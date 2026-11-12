@@ -63,6 +63,13 @@ int main(void)
     contact.response.direction.vz = 4096;
     worldCollisionResolvePushback(&contact, &delta, 1, NULL);
     CHECK(delta.fixed.vx.word == -8257536 && delta.fixed.vy.word == 0 && delta.fixed.vz.word == 8257536);
+    /* The response resolver also sees negative wall/edge corrections. */
+    contact.key.value = WORLD_COLLISION_CONTACT_GRID;
+    worldCollisionResolveResponsePushback(&contact, &delta, 1, NULL);
+    CHECK(delta.fixed.vx.word == -8257536 && delta.fixed.vy.word == 0 && delta.fixed.vz.word == 8257536);
+    contact.key.value = WORLD_COLLISION_CONTACT_GRID | WORLD_COLLISION_CONTACT_GRID_EDGE;
+    worldCollisionResolveResponsePushback(&contact, &delta, 1, NULL);
+    CHECK(delta.fixed.vx.word == -8257536 && delta.fixed.vy.word == 0 && delta.fixed.vz.word == 8257536);
     puts("SDK Q12 logarithm and all eight tagged floor/contact surface classes OK");
     return 0;
 }

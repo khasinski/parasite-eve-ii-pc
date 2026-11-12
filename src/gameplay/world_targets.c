@@ -347,6 +347,8 @@ void worldTargetDrawOverlay(void)
     /// gWorldTargetCursorYFixed8, using the WORLD_TARGET_CURSOR_ easing constants above.
     /// Initial acquisition snaps. Changing targets halves displacement for at
     /// most five passes; convergence still draws small on its final easing pass.
+    /// Scale signed screen halfwords by multiplication: negative pixels are valid,
+    /// but left-shifting a negative signed value is undefined on the host.
     /// Expands multiple statements; use only standalone in a braced block.
 #define WORLD_TARGET_EASE_CURSOR(targetNode, projection, easingActive)                                                                  \
     if (gWorldTargetCursorNode != (targetNode)) {                                                                                       \
@@ -358,8 +360,8 @@ void worldTargetDrawOverlay(void)
         gWorldTargetCursorNode = (targetNode);                                                                                          \
     }                                                                                                                                   \
     if (gWorldTargetCursorEasingPass < WORLD_TARGET_CURSOR_EASING_PASSES) {                                                             \
-        gWorldTargetCursorXFixed8 += (((projection)->screen.vx << WORLD_TARGET_CURSOR_FRACTION_BITS) - gWorldTargetCursorXFixed8) >> 1; \
-        gWorldTargetCursorYFixed8 += (((projection)->screen.vy << WORLD_TARGET_CURSOR_FRACTION_BITS) - gWorldTargetCursorYFixed8) >> 1; \
+        gWorldTargetCursorXFixed8 += (((projection)->screen.vx * (1 << WORLD_TARGET_CURSOR_FRACTION_BITS)) - gWorldTargetCursorXFixed8) >> 1; \
+        gWorldTargetCursorYFixed8 += (((projection)->screen.vy * (1 << WORLD_TARGET_CURSOR_FRACTION_BITS)) - gWorldTargetCursorYFixed8) >> 1; \
         if ((projection)->screen.vx == (gWorldTargetCursorXFixed8 >> WORLD_TARGET_CURSOR_FRACTION_BITS) &&                              \
             (projection)->screen.vy == (gWorldTargetCursorYFixed8 >> WORLD_TARGET_CURSOR_FRACTION_BITS)) {                              \
             gWorldTargetCursorEasingPass = WORLD_TARGET_CURSOR_EASING_COMPLETE;                                                         \
@@ -370,8 +372,8 @@ void worldTargetDrawOverlay(void)
         (projection)->screen.vx = gWorldTargetCursorXFixed8 >> WORLD_TARGET_CURSOR_FRACTION_BITS;                                       \
         (projection)->screen.vy = gWorldTargetCursorYFixed8 >> WORLD_TARGET_CURSOR_FRACTION_BITS;                                       \
     } else {                                                                                                                            \
-        gWorldTargetCursorXFixed8 = (projection)->screen.vx << WORLD_TARGET_CURSOR_FRACTION_BITS;                                       \
-        gWorldTargetCursorYFixed8 = (projection)->screen.vy << WORLD_TARGET_CURSOR_FRACTION_BITS;                                       \
+        gWorldTargetCursorXFixed8 = (projection)->screen.vx * (1 << WORLD_TARGET_CURSOR_FRACTION_BITS);                                       \
+        gWorldTargetCursorYFixed8 = (projection)->screen.vy * (1 << WORLD_TARGET_CURSOR_FRACTION_BITS);                                       \
     }
 
     targetNode = gWorldTargetListHead;

@@ -32,8 +32,13 @@ jobs:
         include:
           - os: macos-latest
             name: macOS
+            renderer: sdl3_gpu
           - os: ubuntu-24.04
             name: Linux x86-64
+            renderer: sdl3_gpu
+          - os: ubuntu-24.04
+            name: Linux OpenGL
+            renderer: sdl3_gl
     name: host tests (${{ matrix.name }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
@@ -48,17 +53,25 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build pkg-config libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev libxfixes-dev libxss-dev libwayland-dev libxkbcommon-dev libegl1-mesa-dev libgl1-mesa-dev libasound2-dev libpulse-dev libudev-dev libdbus-1-dev libdecor-0-dev libvulkan-dev libxtst-dev libxinerama-dev wayland-protocols libdrm-dev libgbm-dev libgles2-mesa-dev
+          sudo apt-get install -y ninja-build pkg-config libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev libxfixes-dev libxss-dev libwayland-dev libxkbcommon-dev libegl1-mesa-dev libgl1-mesa-dev libasound2-dev libpulse-dev libudev-dev libdbus-1-dev libdecor-0-dev libvulkan-dev libxtst-dev libxinerama-dev wayland-protocols libdrm-dev libgbm-dev libgles2-mesa-dev xvfb xauth
       - name: Fetch PsyZ and SDL
         run: |
           git submodule update --init third_party/psyz
           git -C third_party/psyz submodule update --init external/SDL
       - name: Configure
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_TESTING=ON
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_TESTING=ON -DPSYZ_RENDERER=${{ matrix.renderer }}
       - name: Build the host tests
         run: cmake --build build --target host_tests --parallel 4
+      - name: Link the OpenGL game and settings UI
+        if: matrix.renderer == 'sdl3_gl'
+        run: cmake --build build --target parasite-eve-ii-pc --parallel 4
       - name: Run the host tests
-        run: ctest --test-dir build --output-on-failure --no-tests=error
+        run: |
+          if [ "${{ matrix.renderer }}" = "sdl3_gl" ]; then
+            xvfb-run -a ctest --test-dir build --output-on-failure --no-tests=error
+          else
+            ctest --test-dir build --output-on-failure --no-tests=error
+          fi
 
   # The decompiled sources are a minefield for undefined behaviour; this run repeats
   # the host suite under ASan and UBSan. Both abort on the first finding, so any
@@ -152,10 +165,10 @@ jobs:
           git -C third_party/psyz submodule update --init external/SDL
       - name: Configure
         run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
-      - name: Build game and portable graphics regressions
-        run: cmake --build build --parallel 2 --target parasite-eve-ii-pc portable_graphics_tests
-      - name: Portable graphics regressions
-        run: ctest --test-dir build --output-on-failure --no-tests=error -L portable-graphics
+      - name: Build game and portable regressions
+        run: cmake --build build --parallel 2 --target parasite-eve-ii-pc portable_graphics_tests portable_audio_tests portable_gameplay_tests
+      - name: Portable regressions
+        run: ctest --test-dir build --output-on-failure --no-tests=error -L "portable-graphics|portable-audio|portable-gameplay"
       - name: The executable starts
         run: |
           out=$(build/parasite-eve-ii-pc.exe --help 2>&1 || true)

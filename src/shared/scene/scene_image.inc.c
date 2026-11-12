@@ -67,7 +67,11 @@ void mdecRequestSceneImageDecode(const u8* viewId)
     headerFound   = 0;
     requestedView = *viewId;
     for (; headerIndex < ARRAY_SIZE(queue->sceneImageHeaders); headerIndex++) {
-        if (requestedView == queue->sceneImageHeaders[headerIndex].viewId) {
+        /* The cache is zeroed on scene selection. Only a header with payload
+         * sectors is published by streamReadSceneImageSector; otherwise view
+         * zero would match an empty slot and reuse an unrelated payload. */
+        if (queue->sceneImageHeaders[headerIndex].sectorCount != 0 &&
+            requestedView == queue->sceneImageHeaders[headerIndex].viewId) {
             headerFound = 1;
             break;
         }

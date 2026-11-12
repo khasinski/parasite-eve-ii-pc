@@ -28,6 +28,19 @@ void Psyz_PadsOverride(int p,char* f,int n) {(void)p;(void)f;(void)n;}
 int main(void)
 {
     GameSession session={0};gGameSession=&session;session.location.view=2;
+    /* View zero is a valid scene selector, but empty cache slots also contain
+     * zero. An unpublished header must not decode bytes from the prior scene. */
+    memset(&gCdCmdQueue,0,sizeof gCdCmdQueue);
+    mdecRequestSceneImageDecode(&(u8){0});
+    CHECK(gCdCmdQueue.imageDecodeStep==CD_COMMAND_IMAGE_WAIT_HEADER);
+    u8 zeroPayload[16]={0};
+    gCdCmdQueue.decodeBuffer=zeroPayload;
+    gCdCmdQueue.sceneImageHeaders[4].sectorCount=1;
+    gCdCmdQueue.sceneImageHeaders[4].bufferKind=STREAM_SCENE_BUFFER_DECODE;
+    mdecRequestSceneImageDecode(&(u8){0});
+    CHECK(gCdCmdQueue.imageDecodeStep==CD_COMMAND_IMAGE_START);
+    CHECK(_gMdecSceneImageHeader==&gCdCmdQueue.sceneImageHeaders[4]);
+    CHECK(_gMdecImageBitstream==(u_long*)zeroPayload);
     StreamSceneImageHeader stale={.bufferKind=STREAM_SCENE_BUFFER_DECODE};
     for(int cached=0;cached<2;cached++) {
         memset(&gCdCmdQueue,0,sizeof gCdCmdQueue);
@@ -56,6 +69,7 @@ int main(void)
     gCdCmdQueue.imageDecodePending=1;
     gCdCmdQueue.imageDecodeStep=CD_COMMAND_IMAGE_WAIT_HEADER;
     gCdCmdQueue.sceneImageHeaders[0].viewId=2;
+    gCdCmdQueue.sceneImageHeaders[0].sectorCount=1;
     gCdCmdQueue.sceneImageHeaders[0].bufferKind=STREAM_SCENE_BUFFER_DECODE;
     _gMdecSceneWaitPolls=90;
     _mdecStepSceneImageDecode();

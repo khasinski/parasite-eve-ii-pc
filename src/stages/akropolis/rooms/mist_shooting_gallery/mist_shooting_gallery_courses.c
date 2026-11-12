@@ -68,6 +68,9 @@ enum {
     SPAWN_END         = 0xFFFF, // End of the script; nothing further spawns
 };
 
+// Countdown tests use the signed low halfword, including an expired -1.
+// Cast directly rather than reproducing the console's signed left shift by 16.
+
 static void   _mistShootingGalleryExitCourse(Task* task);
 static void   _mistShootingGalleryDrawCountdownClock(MistShootingGalleryWork* work);
 static u16    _mistShootingGalleryTickCourseClock(MistShootingGalleryWork* work);
@@ -388,7 +391,7 @@ static void _mistShootingGalleryRunCourse0(Task* controller)
         case COURSE_0_INTRO_CAPTION:
             introFramesLeft = work->timer - 1;
             work->timer     = introFramesLeft;
-            if ((s32)(introFramesLeft << 16) <= 0) {
+            if ((s16)introFramesLeft <= 0) {
                 work->timer = COURSE_0_CAPTION_DELAY_TICKS;
                 work->phase++;
                 _mistShootingGalleryShowCaption(COURSE_0_CAPTION_COMMAND, COURSE_0_INTRO_KEY, CAPTION_DISMISS_BUTTONS);
@@ -397,7 +400,7 @@ static void _mistShootingGalleryRunCourse0(Task* controller)
         case COURSE_0_LAYOUT_CAPTION:
             layoutFramesLeft = work->timer - 1;
             work->timer      = layoutFramesLeft;
-            if ((s32)(layoutFramesLeft << 16) <= 0) {
+            if ((s16)layoutFramesLeft <= 0) {
                 work->phase++;
                 _mistShootingGalleryShowCaption(COURSE_0_CAPTION_COMMAND, buttonLayout + COURSE_0_LAYOUT_FIRST_KEY, CAPTION_DISMISS_BUTTONS);
             }
@@ -414,7 +417,7 @@ static void _mistShootingGalleryRunCourse0(Task* controller)
         case COURSE_0_READY_DELAY:
             readyFramesBeforeDecrement = work->timer;
             work->timer                = readyFramesBeforeDecrement - 1;
-            if ((s32)(readyFramesBeforeDecrement << 16) <= 0) {
+            if ((s16)readyFramesBeforeDecrement <= 0) {
                 work->timer = COURSE_0_TARGET_DELAY_TICKS;
                 work->phase++;
                 taskSpawnFromTable(gMistShootingGalleryTaskDescs, MIST_SHOOTING_GALLERY_TASK_RED_FLASH, 0, 0);
@@ -425,7 +428,7 @@ static void _mistShootingGalleryRunCourse0(Task* controller)
         case COURSE_0_FIRST_TARGET:
             firstTargetFramesLeft = work->timer - 1;
             work->timer           = firstTargetFramesLeft;
-            if ((s32)(firstTargetFramesLeft << 16) <= 0) {
+            if ((s16)firstTargetFramesLeft <= 0) {
                 work->phase++;
                 spawn = &_gMistShootingGalleryCourse0WaveScriptRefs[0][work->spawnIndex];
                 _mistShootingGallerySpawnTarget(controller, spawn);
@@ -446,7 +449,7 @@ static void _mistShootingGalleryRunCourse0(Task* controller)
             if (work->liveTargets == 0) {
                 secondTargetFramesLeft = work->timer - 1;
                 work->timer            = secondTargetFramesLeft;
-                if ((s32)(secondTargetFramesLeft << 16) <= 0) {
+                if ((s16)secondTargetFramesLeft <= 0) {
                     work->timer = COURSE_0_LONG_DELAY_TICKS;
                     work->phase++;
                     spawn = &_gMistShootingGalleryCourse0WaveScriptRefs[0][work->spawnIndex];
@@ -458,7 +461,7 @@ static void _mistShootingGalleryRunCourse0(Task* controller)
         case COURSE_0_TARGET_INSTRUCTIONS:
             instructionsFramesLeft = work->timer - 1;
             work->timer            = instructionsFramesLeft;
-            if ((s32)(instructionsFramesLeft << 16) <= 0) {
+            if ((s16)instructionsFramesLeft <= 0) {
                 work->phase++;
                 _mistShootingGalleryShowCaption(COURSE_0_CAPTION_COMMAND, buttonLayout + COURSE_0_TARGET_INSTRUCTIONS_FIRST_KEY, CAPTION_DISMISS_BUTTONS);
             }
@@ -482,7 +485,7 @@ static void _mistShootingGalleryRunCourse0(Task* controller)
         case COURSE_0_SEED_TARGETS:
             seedFramesLeft = work->timer - 1;
             work->timer    = seedFramesLeft;
-            if ((s32)(seedFramesLeft << 16) <= 0) {
+            if ((s16)seedFramesLeft <= 0) {
                 spawn = &_gMistShootingGalleryCourse0WaveScriptRefs[0][work->spawnIndex];
                 _mistShootingGallerySpawnTarget(controller, spawn);
                 work->spawnIndex++;
@@ -497,7 +500,7 @@ static void _mistShootingGalleryRunCourse0(Task* controller)
         case COURSE_0_WAVE_INSTRUCTIONS:
             waveInstructionsFramesLeft = work->timer - 1;
             work->timer                = waveInstructionsFramesLeft;
-            if ((s32)(waveInstructionsFramesLeft << 16) <= 0) {
+            if ((s16)waveInstructionsFramesLeft <= 0) {
                 work->phase++;
                 _mistShootingGalleryShowCaption(COURSE_0_CAPTION_COMMAND, buttonLayout + COURSE_0_WAVE_INSTRUCTIONS_FIRST_KEY, CAPTION_DISMISS_BUTTONS);
             }
@@ -626,7 +629,7 @@ static void _mistShootingGalleryRunCourse1(Task* controller)
         case COURSE_1_INTRO_CAPTIONS:
             introFramesLeft = work->timer - 1;
             work->timer     = introFramesLeft;
-            if ((s32)(introFramesLeft << 16) <= 0) {
+            if ((s16)introFramesLeft <= 0) {
                 _mistShootingGalleryShowCaption(COURSE_1_CAPTION_COMMAND, work->captionStep, CAPTION_DISMISS_BUTTONS);
                 captionKey = work->captionStep;
                 if (captionKey == COURSE_1_INTRO_LAST_KEY) {
@@ -642,7 +645,7 @@ static void _mistShootingGalleryRunCourse1(Task* controller)
         case COURSE_1_READY_DELAY:
             readyFramesBeforeDecrement = work->timer;
             work->timer                = readyFramesBeforeDecrement - 1;
-            if ((s32)(readyFramesBeforeDecrement << 16) <= 0) {
+            if ((s16)readyFramesBeforeDecrement <= 0) {
                 work->timer = COURSE_1_START_DELAY_TICKS;
                 work->phase++;
                 taskSpawnFromTable(gMistShootingGalleryTaskDescs, MIST_SHOOTING_GALLERY_TASK_RED_FLASH, 0, 0);
@@ -654,7 +657,7 @@ static void _mistShootingGalleryRunCourse1(Task* controller)
         case COURSE_1_START_DELAY:
             startFramesBeforeDecrement = work->timer;
             work->timer                = startFramesBeforeDecrement - 1;
-            if ((s32)(startFramesBeforeDecrement << 16) > 0) {
+            if ((s16)startFramesBeforeDecrement > 0) {
                 break;
             }
             work->phase++;
@@ -836,7 +839,7 @@ static void _mistShootingGalleryRunCourse2(Task* controller)
             break;
         case COURSE_2_SEED_TARGETS:
             work->timer--;
-            if ((s32)(work->timer << 16) <= 0) {
+            if ((s16)work->timer <= 0) {
                 _mistShootingGallerySpawnTarget(controller, &_gMistShootingGalleryCourse2WaveScriptRef[work->spawnIndex]);
                 work->spawnIndex++;
                 if (work->spawnIndex == COURSE_2_INITIAL_TARGET_COUNT) {
@@ -864,7 +867,7 @@ static void _mistShootingGalleryRunCourse2(Task* controller)
         case COURSE_2_START_ROUND:
             timerBeforeDecrement = work->timer;
             work->timer          = timerBeforeDecrement - 1;
-            if ((s32)(timerBeforeDecrement << 16) <= 0) {
+            if ((s16)timerBeforeDecrement <= 0) {
                 work->timer = COURSE_2_ROUND_START_DELAY_FRAMES;
                 work->phase++;
                 taskSpawnFromTable(gMistShootingGalleryTaskDescs, MIST_SHOOTING_GALLERY_TASK_RED_FLASH, 0, 0);
@@ -974,7 +977,7 @@ static void _mistShootingGalleryRunCourse3(Task* controller)
             break;
         case COURSE_3_SEED_TARGETS:
             work->timer--;
-            if ((s32)(work->timer << 16) <= 0) {
+            if ((s16)work->timer <= 0) {
                 _mistShootingGallerySpawnTarget(controller, &_gMistShootingGalleryCourse3WaveScriptRef[work->spawnIndex]);
                 work->spawnIndex++;
                 if (work->spawnIndex == COURSE_3_INITIAL_TARGET_COUNT) {
@@ -988,7 +991,7 @@ static void _mistShootingGalleryRunCourse3(Task* controller)
             break;
         case COURSE_3_TURN_INSTRUCTIONS:
             work->timer--;
-            if ((s32)(work->timer << 16) <= 0) {
+            if ((s16)work->timer <= 0) {
                 _mistShootingGalleryShowCaption(COURSE_3_CAPTION_COMMAND, work->captionStep, CAPTION_DISMISS_BUTTONS);
                 if (work->captionStep == COURSE_3_TURN_LAST_KEY) {
                     work->timer = COURSE_3_READY_DELAY_FRAMES;
@@ -1171,7 +1174,7 @@ static void _mistShootingGalleryRunCourse4(Task* controller)
         case COURSE_4_READY_DELAY:
             framesLeft  = work->timer - 1;
             work->timer = framesLeft;
-            if ((s32)(framesLeft << 16) <= 0) {
+            if ((s16)framesLeft <= 0) {
                 work->timer = COURSE_4_START_DELAY_TICKS;
                 work->phase++;
                 taskSpawnFromTable(gMistShootingGalleryTaskDescs, MIST_SHOOTING_GALLERY_TASK_RED_FLASH, 0, 0);
@@ -1183,7 +1186,7 @@ static void _mistShootingGalleryRunCourse4(Task* controller)
         case COURSE_4_START_DELAY:
             framesLeft  = work->timer - 1;
             work->timer = framesLeft;
-            if ((s32)(framesLeft << 16) <= 0) {
+            if ((s16)framesLeft <= 0) {
                 work->phase++;
             }
             break;
@@ -1199,7 +1202,7 @@ static void _mistShootingGalleryRunCourse4(Task* controller)
         case COURSE_4_LETHAL_HIT_CAPTIONS:
             framesLeft  = work->timer - 1;
             work->timer = framesLeft;
-            if ((s32)(framesLeft << 16) <= 0) {
+            if ((s16)framesLeft <= 0) {
                 _mistShootingGalleryShowCaption(COURSE_4_CAPTION_COMMAND, work->captionStep, CAPTION_DISMISS_BUTTONS);
                 captionKey = work->captionStep;
                 if (captionKey == COURSE_4_LETHAL_LAST_KEY) {
@@ -1215,7 +1218,7 @@ static void _mistShootingGalleryRunCourse4(Task* controller)
         case COURSE_4_LETHAL_HIT_RELEASE:
             framesLeft  = work->timer - 1;
             work->timer = framesLeft;
-            if ((s32)(framesLeft << 16) <= 0) {
+            if ((s16)framesLeft <= 0) {
                 sceneReleaseBattleRefAndClearRewards(controller, 0);
                 taskKill(controller);
                 return;
@@ -1645,8 +1648,8 @@ static Enemy* _mistShootingGallerySpawnTarget(Task* controller, const _MistShoot
     work  = controller->work;
     enemy = enemySpawnFromTable(gShootingGalleryTargetsTaskDescriptors, SHOOTING_GALLERY_TARGETS_TASK_MOUNT, spawn->spawnArgLo | (spawn->spawnArgHi << SPAWN_HIGH_HALF_SHIFT), NULL);
     if (enemy != NULL) {
-        // Retain the parent overwrite before transfer; source-ring ownership is unproven.
-        enemy->task->parent = controller;
+        // Reparent must detach from the actual previous owner. Overwriting parent
+        // first makes an unparented mount clear the controller's existing children.
         taskReparent(controller, enemy->task);
         model                    = enemy->task->extra.tmd;
         model->texturePageOffset = 0;

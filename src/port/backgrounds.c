@@ -211,7 +211,7 @@ static void dumpNative(uint64_t key)
     else fprintf(stderr,"[background] captured %016" PRIx64 "\n",key);
 }
 
-static int materialIsOpaque(const char* path,const PeBackgroundPack* pack)
+static int materialIsValid(const char* path,const PeBackgroundPack* pack,int checkNative)
 {
     SDL_Surface* image=SDL_LoadPNG(path);
     if(!image)return 0;
@@ -224,6 +224,30 @@ static int materialIsOpaque(const char* path,const PeBackgroundPack* pack)
         for(unsigned row=0;row<68 && valid;row++) {
             const unsigned char* pixels=(const unsigned char*)rgba->pixels+(y+row)*rgba->pitch+x*4;
             for(unsigned column=0;column<68;column++)if(pixels[column*4+3]!=255) {valid=0;break;}
+        }
+        if(checkNative) {
+            /* Metadata and PNG can be replaced independently. Validate the
+             * reference plane against the image actually decoded this frame,
+             * rather than trusting a filename/key attached to another atlas.
+             * Include gutters and every 4x sample: the GPU samples this plane
+             * during native fallback, including black and STP source pixels. */
+            unsigned columns=(unsigned)(pack->right-pack->left)/16;
+            int sourceX=pack->left+(int)(cell%columns)*16;
+            unsigned sourceY=cell/columns*16;
+            unsigned referenceY=y+((pack->cells+15)/16)*68;
+            for(unsigned row=0;row<68 && valid;row++) {
+                unsigned py=(row<2?0:row>65?63:row-2)/4;
+                const unsigned char* pixels=(const unsigned char*)rgba->pixels+(referenceY+row)*rgba->pitch+x*4;
+                for(unsigned column=0;column<68;column++) {
+                    unsigned px=(column<2?0:column>65?63:column-2)/4;
+                    int inside=sourceX>=0 && sourceX<320;
+                    uint16_t word=inside?nativeRows[(sourceY+py)*320+sourceX+px]:0;
+                    const unsigned char* sample=pixels+column*4;
+                    if(sample[3]!=(inside?255:0)) {valid=0;break;}
+                    if(inside && (sample[0]!=(word&31)*255/31 ||
+                       sample[1]!=((word>>5)&31)*255/31 || sample[2]!=((word>>10)&31)*255/31)) {valid=0;break;}
+                }
+            }
         }
     }
     SDL_DestroySurface(rgba);return valid;
@@ -265,7 +289,7 @@ static void preparePack(uint64_t key)
         }
         fclose(file);
     }
-    if(!valid || !materialIsOpaque(path,&currentPack) || Psyz_GpuLoadSpriteAtlas(key,path)!=1) {
+    if(!valid || !materialIsValid(path,&currentPack,1) || Psyz_GpuLoadSpriteAtlas(key,path)!=1) {
         fprintf(stderr,"[background] unavailable atlas for %016" PRIx64 "; using original\n",key);return;
     }
     packAvailable=1;
@@ -286,7 +310,7 @@ static void preparePack(uint64_t key)
         if(!fseek(file,0,SEEK_END)) {long encoded=ftell(file);valid=encoded>=24 && encoded<=64*1024*1024 && peBackgroundCheckPngHeader(pngHeader,got,&dimensions);}
         fclose(file);
     }
-    if(!valid || !materialIsOpaque(path,&dimensions) || Psyz_GpuLoadSpriteAtlas(foregroundPack.atlas_key,path)!=1) {
+    if(!valid || !materialIsValid(path,&dimensions,0) || Psyz_GpuLoadSpriteAtlas(foregroundPack.atlas_key,path)!=1) {
         fprintf(stderr,"[foreground] unavailable atlas; using original sprites\n");return;
     }
     foregroundAvailable=1;

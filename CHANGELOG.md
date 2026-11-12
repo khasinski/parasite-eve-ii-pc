@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.4
+
+- Fix malformed native GPU packets in room and actor variants that caused stretched models, giant triangles and green combat-overlay artifacts. Correct fixed-size inventory meter sprites.
+- Fix incorrect backgrounds during Rupert and No. 9 scenes: rebuild newly allocated VLC tables, preserve compressed scene data across camera-buffer reservations and reject empty image-cache entries.
+- Fix shooting-gallery target ownership so spawning another mount preserves existing targets; make course timer expiry, negative reticle coordinates and collision pushback safe on host compilers.
+- Start the native SPU mixer before loading sound banks, including when the intro is skipped. Later CD-audio initialization no longer erases early weapon/menu samples.
+- Fix OpenGL game/settings linkage, restore the game context after closing settings and correct the Windows OpenGL library name. Add hidden OpenGL replay support and Linux OpenGL CI coverage.
+- Reject experimental background atlases with mismatched native reference pixels, alpha or gutters. Generated widescreen artwork is not included.
+- Expand the host suite to 56 tests and the portable Windows subset to 20, including audio startup and shooting-gallery ownership regressions.
+
 ## 0.3.3
 
 - Fix the crash when leaving the inventory after equipping an M4A1. Restore the real resident rifle animation bank and model; apply the same fix to the MP5 family.

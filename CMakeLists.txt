@@ -3,7 +3,7 @@ if(CMAKE_HOST_APPLE AND NOT DEFINED CMAKE_OSX_DEPLOYMENT_TARGET
    AND (NOT DEFINED CMAKE_SYSTEM_NAME OR CMAKE_SYSTEM_NAME STREQUAL "Darwin"))
     set(CMAKE_OSX_DEPLOYMENT_TARGET "15.0" CACHE STRING "Minimum supported macOS version")
 endif()
-project(parasite-eve-ii-pc VERSION 0.2.0 LANGUAGES C)
+project(parasite-eve-ii-pc VERSION 0.3.4 LANGUAGES C)
 # Host cast audits and local tooling consume this on fresh build trees too.
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -121,6 +121,9 @@ pe_host_test(observatory_scene_lifecycle_test INCLUDES include/decomp ${PE_GENER
 pe_host_test(raster_clock_test DEFINES __psyz LINK psyz)
 pe_host_test(gpu_tpage_test INCLUDES include/decomp DEFINES __psyz SKIP_ASM LINK psyz)
 pe_host_test(pad_trace_test SOURCES src/port/pad_trace.c)
+pe_host_test(hud_hp_packet_test INCLUDES include/decomp ${PE_GENERATED_DIR} DEFINES __psyz SKIP_ASM OPTIONS -w LINK psyz STRIP)
+pe_host_test(gallery_wave_ownership_test SOURCES src/main/task.c INCLUDES include/decomp ${PE_GENERATED_DIR} src/main DEFINES __psyz SKIP_ASM OPTIONS -w LINK psyz STRIP)
+pe_host_test(audio_startup_test DEFINES __psyz LINK psyz STRIP)
 pe_host_test(player_target_test SOURCES src/gameplay/player_target.c INCLUDES include/decomp DEFINES __psyz SKIP_ASM LINK psyz)
 pe_host_test(action_trigger_test SOURCES src/gameplay/collision_grid.c src/gameplay/object_lists.c
     INCLUDES include/decomp ${PE_GENERATED_DIR} DEFINES __psyz SKIP_ASM LINK psyz STRIP)
@@ -170,6 +173,7 @@ pe_host_test(scene_image_timeout_test INCLUDES include/decomp DEFINES __psyz SKI
 pe_host_test(background_coverage_test SOURCES src/port/background_coverage.c INCLUDES ${PSYZ_DIR}/psyz/include DEFINES __psyz)
 # video.h uses PsyZ public types; this test supplies stub renderer entry points.
 pe_host_test(background_pack_test SOURCES src/port/background_pack.c)
+pe_host_test(native_polygon_clip_probe DEFINES __psyz SKIP_ASM LINK psyz)
 pe_host_test(background_presenter_probe SOURCES src/port/backgrounds.c src/port/background_coverage.c src/port/background_pack.c src/port/gpu_state.c src/port/background_foreground.c src/port/foreground_ot.c src/port/foreground_pack.c src/port/foreground_stage.c
     DEFINES __psyz SKIP_ASM LINK psyz)
 pe_host_test(hd_native_decode MAIN tools/hd/native_decode.c SOURCES src/port/mdec_vlc.c src/port/background_pack.c
@@ -220,13 +224,34 @@ foreach(_t IN LISTS _pe_targets)
         add_test(NAME ${_t} COMMAND ${_t})
     endif()
 endforeach()
-set_tests_properties(gpu_state_test gpu_tpage_test caption_packet_test PROPERTIES ENVIRONMENT "PSYZ_HEADLESS=1;SDL_AUDIODRIVER=dummy")
+set_tests_properties(hud_hp_packet_test gpu_state_test gpu_tpage_test caption_packet_test PROPERTIES ENVIRONMENT "PSYZ_HEADLESS=1;SDL_AUDIODRIVER=dummy")
+set_tests_properties(audio_startup_test PROPERTIES ENVIRONMENT "PSYZ_HEADLESS=1;SDL_AUDIODRIVER=dummy;PSYZ_AUDIO_CLOCK=video")
 
 # These regressions avoid the POSIX filesystem fixtures and can run on Windows.
 set(PE_PORTABLE_GRAPHICS_TESTS
     actor_walk_gap_test sdk_random_test port_random_test screen_negative_test
     gte_compat_test asset_disc_cache_test background_coverage_test background_pack_test
-    foreground_packet_test gpu_state_test foreground_pack_test foreground_stage_test
+    foreground_packet_test gpu_state_test hud_hp_packet_test foreground_pack_test foreground_stage_test
     scene_timing_buffer_test water_grid_packet_test bezier_curve_test background_capture_target_test)
 add_custom_target(portable_graphics_tests DEPENDS ${PE_PORTABLE_GRAPHICS_TESTS})
 set_tests_properties(${PE_PORTABLE_GRAPHICS_TESTS} PROPERTIES LABELS "portable-graphics")
+add_custom_target(portable_audio_tests DEPENDS audio_startup_test)
+set_tests_properties(audio_startup_test PROPERTIES LABELS "portable-audio")
+add_custom_target(portable_gameplay_tests DEPENDS gallery_wave_ownership_test fixed_log_test)
+set_tests_properties(gallery_wave_ownership_test fixed_log_test PROPERTIES LABELS "portable-gameplay")
+if(MINGW)
+    # These fixtures retain only selected paths from complete gameplay units,
+    # like scene_timing_buffer_test above. Do not retain unrelated COFF unwind
+    # roots, or require definitions for paths the fixtures never execute.
+    foreach(_test IN ITEMS hud_hp_packet_test gallery_wave_ownership_test fixed_log_test)
+        target_compile_options(${_test} PRIVATE -fno-asynchronous-unwind-tables -fno-unwind-tables)
+        if(PE_LLD_FORCE_UNRESOLVED)
+            target_link_options(${_test} PRIVATE -Wl,-Xlink=-force:unresolved)
+        elseif(CMAKE_C_COMPILER_ID STREQUAL "GNU")
+            # GCC's COFF data references can retain unrelated callback tables.
+            # LTO removes those paths before GNU ld checks their references.
+            target_compile_options(${_test} PRIVATE -flto)
+            target_link_options(${_test} PRIVATE -flto)
+        endif()
+    endforeach()
+endif()

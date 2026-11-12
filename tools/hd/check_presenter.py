@@ -78,7 +78,8 @@ def main():
         assert lower.read_bytes()==reference.read_bytes(),(case,'physical buffers differ')
     nativeBaseline=run('native-baseline',0,scale=1)
     assert run('native-pack',1,pack,scale=1).read_bytes()==nativeBaseline.read_bytes()
-    for case in ['bad-magic','wrong-key','missing-atlas','bad-atlas-header','trailing-metadata','oversized-span','oversized-png','transparent-material']:
+    for case in ['bad-magic','wrong-key','missing-atlas','bad-atlas-header','trailing-metadata','oversized-span','oversized-png','transparent-material',
+                 'wrong-reference','wrong-reference-gutter','transparent-reference']:
         directory=root/case;directory.mkdir(exist_ok=True)
         data=bytearray(metadata);shutil.copyfile(pack/imageName,directory/imageName)
         if case=='bad-magic':data[0]=0
@@ -92,10 +93,19 @@ def main():
         if case=='transparent-material':
             with Image.open(directory/imageName) as image:
                 image=image.convert('RGBA');image.putpixel((2,2),(192,64,128,0));image.save(directory/imageName)
+        if case in ['wrong-reference','wrong-reference-gutter','transparent-reference']:
+            with Image.open(directory/imageName) as image:
+                image=image.convert('RGBA')
+                # Cell four is the first native tile (the first four are sides).
+                x,y=4*68+2,image.height//2+2
+                if case=='wrong-reference-gutter':x-=2
+                old=image.getpixel((x,y))
+                image.putpixel((x,y),(old[0]^255,old[1],old[2],old[3]) if case!='transparent-reference' else (*old[:3],0))
+                image.save(directory/imageName)
         (directory/metaName).write_bytes(data)
         assert run(case,1,directory).read_bytes()==nativeWide.read_bytes(),case
     (root/'report.json').write_text(json.dumps(dict(passed=True,cases=results),indent=2)+'\n')
-    print('PASS: original native pixels, HD material, full 16:9 coverage, live pack disable/reload, native 16:9 with black sides, safe 1x fallback, eight malformed-pack fallbacks')
+    print('PASS: original native pixels, HD material, full 16:9 coverage, live pack disable/reload, native 16:9 with black sides, safe 1x fallback, eleven malformed-pack fallbacks')
 
 
 if __name__=='__main__':main()

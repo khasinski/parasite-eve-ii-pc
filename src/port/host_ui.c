@@ -523,6 +523,13 @@ static void processEvent(const SDL_Event* e) {
 
 static void settings(void) {
     int wasPaused=Psyz_AudioIsPaused();
+#ifdef PE2_RENDERER_OPENGL
+    /* The fallback panel owns a separate SDL renderer/context. Restore the
+     * game's context before resuming its GL command stream. */
+    SDL_GLContext gameContext=SDL_GL_GetCurrentContext();
+    SDL_Window* gameWindow=SDL_GL_GetCurrentWindow();
+    s_overlayGpuWindow=Psyz_GetWindow_SDL3();
+#endif
     Psyz_PauseHostClock_SDL3(true);Psyz_AudioPause();
     s_overlayState.open=1;s_overlayState.quit=0;
     if(getenv("PE2_MENU_PAGE")) setPage(atoi(getenv("PE2_MENU_PAGE"))&3);   /* development: open on this page */
@@ -553,9 +560,12 @@ static void settings(void) {
             Psyz_VideoVSync(0);
         }
     }
-    SDL_DestroyTexture(texture);SDL_DestroyRenderer(renderer);SDL_DestroyWindow(fallback);
     saveOptions();
 done:
+    SDL_DestroyTexture(texture);SDL_DestroyRenderer(renderer);SDL_DestroyWindow(fallback);
+#ifdef PE2_RENDERER_OPENGL
+    if(gameContext && gameWindow)SDL_GL_MakeCurrent(gameWindow,gameContext);
+#endif
     uiWindow=NULL;s_overlayState.open=0;SDL_ResetKeyboard();Psyz_PauseHostClock_SDL3(false);
     if(!wasPaused)Psyz_AudioUnpause();
     if(s_overlayState.quit) { SDL_Event e={.type=SDL_EVENT_QUIT};SDL_PushEvent(&e); }
@@ -652,8 +662,10 @@ int peHostStartup(int argc,char** argv,const char** disc) {
         }
         saveOptions();return 0;
     }
+#ifndef PE2_RENDERER_OPENGL
     s_prevOverlayInit=Psyz_OverlayInit_SDL3GPU(Host_OverlayInitGPU);
     s_prevOverlayRender=Psyz_OverlayRender_SDL3GPU(Host_OverlayRenderGPU);
+#endif
     s_prevOverlayDestroy=Psyz_OverlayDestroyCB(Host_OverlayDestroyGPU);
     previousFilter=Psyz_SetOverlayEventFilter_SDL3(settingsEvent);
     if(menuOnly) {

@@ -94,6 +94,15 @@ static const s32* _gCdCmdMovieWorkspaceBytesByStage[10] = {
     NULL,
 };
 
+#ifdef __psyz
+/* Compressed scene images survive camera-local heap resets. Their headers
+ * remain cached while the native allocator can return a different block on
+ * every reservation. Keep the CD write cursor and decode input stable too.
+ * Two MiB covers the original console's entire main RAM, hence every valid
+ * resident scene payload; the original heap reservation is still performed. */
+static _Alignas(16) u8 _gNativeSceneDecodeBuffer[2 * 1024 * 1024];
+#endif
+
 static void _cdCmdReserveSceneBuffers(void)
 {
     CdCmdQueue* queue;
@@ -107,6 +116,11 @@ static void _cdCmdReserveSceneBuffers(void)
             switch (vlcBufferKind) {
                 case STREAM_VLC_BUFFER_ALLOCATE:
                     queue->vlcTable = memMalloc(STREAM_VLC_TABLE_BYTES, true);
+#ifdef __psyz
+                    /* A camera reload can reserve a different native block.
+                     * The previous table's built flag does not initialize it. */
+                    queue->vlcTableBuilt = 0;
+#endif
                     break;
                 case STREAM_VLC_BUFFER_ACTOR_0:
                     gGameSession->field_7C = 0;
@@ -169,6 +183,11 @@ static void _cdCmdReserveSceneBuffers(void)
         }
         if (queue->decodeBufferBytes != 0) {
             queue->decodeBuffer = memMalloc(queue->decodeBufferBytes, true);
+#ifdef __psyz
+            if (queue->decodeBuffer != NULL && (u32)queue->decodeBufferBytes <= sizeof(_gNativeSceneDecodeBuffer)) {
+                queue->decodeBuffer = _gNativeSceneDecodeBuffer;
+            }
+#endif
         }
     }
 
