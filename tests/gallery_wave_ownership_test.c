@@ -2,12 +2,16 @@
 #undef NDEBUG
 #endif
 #include "port/gpu_len.h"
-#include "port/asset_bind.h"
-/* This fixture supplies its spawn record directly; it never loads a room.
- * Retained COFF asset registrations would root unrelated course callbacks. */
-#undef PE_ASSET_BIND_AUX
-#define PE_ASSET_BIND_AUX(key, array, auxArray)
-#include "../src/stages/akropolis/rooms/mist_shooting_gallery/mist_shooting_gallery_courses.c"
+#include "stages/akropolis/rooms/mist_shooting_gallery.h"
+#include "stages/akropolis/actors/shooting_gallery_targets.h"
+#include "gameplay/enemy.h"
+#include "gameplay/scene_runtime.h"
+#include "gameplay/model_objects.h"
+#include "main/display_types.h"
+#include "main/task.h"
+#include "main/tmd.h"
+#include "../src/stages/akropolis/rooms/mist_shooting_gallery/mist_shooting_gallery_private.h"
+#include "../src/stages/akropolis/rooms/mist_shooting_gallery/mist_shooting_gallery_spawn.inc.c"
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>

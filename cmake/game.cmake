@@ -247,7 +247,7 @@ set_property(SOURCE src/stages/akropolis/actors/helicopter_landing_pad_no_9/heli
 if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/src/port/asm_data.c)
     file(WRITE ${CMAKE_CURRENT_SOURCE_DIR}/src/port/asm_data.c "")
 endif()
-add_executable(parasite-eve-ii-pc src/port/main.c src/port/psyq_host.c src/port/memory_card.c src/port/fixed_log.c src/port/pad_trace.c src/port/lzss.c src/port/tmd_dispatch.c src/port/tmd_prim.c src/port/tmd_ops.c src/port/mdec_vlc.c src/port/tmd_source.c src/port/tmd_layout.c src/port/cap_asset.c src/port/cap_resource.c src/port/disc_assets.c src/port/asset_loader.c src/port/asset_registry.c src/port/asset_parts_table.c src/port/asm_data.c src/port/globals.c src/port/unresolved_stubs.c $<TARGET_OBJECTS:game_main>
+add_executable(parasite-eve-ii-pc src/port/main.c src/port/psyq_host.c src/port/heap.c src/port/memory_card.c src/port/fixed_log.c src/port/pad_trace.c src/port/lzss.c src/port/tmd_dispatch.c src/port/tmd_prim.c src/port/tmd_ops.c src/port/mdec_vlc.c src/port/tmd_source.c src/port/tmd_layout.c src/port/cap_asset.c src/port/cap_resource.c src/port/disc_assets.c src/port/asset_loader.c src/port/asset_registry.c src/port/asset_parts_table.c src/port/asm_data.c src/port/globals.c src/port/unresolved_stubs.c $<TARGET_OBJECTS:game_main>
     $<TARGET_OBJECTS:game_overlays>)
 target_include_directories(parasite-eve-ii-pc PRIVATE include include/decomp src/main)
 target_compile_definitions(parasite-eve-ii-pc PRIVATE __psyz SKIP_ASM)

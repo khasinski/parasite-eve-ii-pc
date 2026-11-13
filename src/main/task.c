@@ -77,6 +77,30 @@ static Task* (_taskSpawnFromDesc)(TaskDesc* desc, TaskSpawnArg spawnArg1, TaskSp
 static void _taskUnlinkFromSelectedList(Task* task);
 
 static void _taskFree(Task* task);
+static inline void _taskDetachForReparent(Task* task);
+
+/* Active callback dispatches borrow task pointers. Retirement updates every
+ * nested dispatch before storage can be freed or reused. */
+typedef struct TaskDispatchFrame {
+    struct TaskDispatchFrame* previous;
+    Task* cursor;
+    Task* successor;
+} TaskDispatchFrame;
+static TaskDispatchFrame* _gTaskDispatchFrame;
+
+static void _taskNotifyRetirement(Task* task)
+{
+    TaskDispatchFrame* frame;
+    for (frame = _gTaskDispatchFrame; frame != NULL; frame = frame->previous) {
+        if (frame->cursor == task) {
+            frame->cursor = NULL;
+            frame->successor = task->node.next;
+        } else if (frame->successor == task) {
+            frame->successor = task->node.next;
+        }
+    }
+}
+
 
 bool gTaskDeferModelBufferAllocation = false;
 
@@ -236,7 +260,7 @@ static inline void _taskCollectImmediately(Task* task)
     predecessorNode       = task->node.prev;
     *backlinkSlot         = predecessorNode;
     predecessorNode->next = task->node.next;
-    memFree(task);
+    _taskFree(task);
     _gTaskActiveList = savedListHead;
 }
 
@@ -308,48 +332,11 @@ void taskKill(Task* task)
     /// bypasses it.
     enum { TASK_MODEL_RELEASE_DELAY_TICKS = 2 };
 
-    Task* firstChild;
-    Task* ringCursor;
-    Task* childHead;
-    s32   bodyKind;
-    s32   immediateBodyKind;
-    Task* parent;
-    Task* nextSibling;
+    s32 bodyKind;
+    s32 immediateBodyKind;
 
-    // Exit handlers may immediately free a child (e.g. weapon reflections).
-    // Save its ring successor before dispatch; no child storage is live after
-    // that call. Clearing parent keeps teardown from unlinking the saved ring.
-    childHead = task->firstChild;
-    if (childHead != NULL) {
-        firstChild = childHead;
-        ringCursor = firstChild;
-        do {
-            nextSibling = ringCursor->nextSibling;
-            ringCursor->parent = NULL;
-            ringCursor->exitCallback(ringCursor);
-            ringCursor = nextSibling;
-        } while (ringCursor != firstChild);
-    }
-
-    // Remove this task from its parent's ring without rewriting its own links.
-    parent = task->parent;
-    if (parent != NULL) {
-        nextSibling = task->nextSibling;
-        if (nextSibling == task) {
-            parent->firstChild = NULL;
-        } else {
-            if (parent->firstChild == task) {
-                parent->firstChild = nextSibling;
-            }
-            ringCursor = task;
-            if (task->nextSibling != task) {
-                do {
-                    ringCursor = ringCursor->nextSibling;
-                } while (ringCursor->nextSibling != task);
-            }
-            ringCursor->nextSibling = task->nextSibling;
-        }
-    }
+    taskCallChildExits(task);
+    _taskDetachForReparent(task);
 
     if (task->work != NULL) {
         memFree(task->work);
@@ -430,40 +417,16 @@ Task* (taskSpawn)(s32 bank, TaskSpawnArg selector, TaskSpawnArg spawnArg1, TaskS
     return _taskSpawnFromDesc(desc, spawnArg1, spawnArg2, _gTaskActiveList);
 }
 
-/// Dispatches each child's exit with its parent cleared in a nonempty sibling ring.
-///
-/// `firstChild` must be non-NULL and head a closed ring of live tasks with
-/// loaded, non-NULL exit handlers. Clearing the parent before dispatch keeps
-/// default teardown from removing the child from this ring. Each successor is
-/// read after its handler returns; the handler must preserve that link's bytes
-/// without reuse, and the remaining traversal, even when freeing the child.
-/// The head serves only as a comparison boundary after its own dispatch.
-/// Sibling links are not reset, and clearing the owner's child head belongs
-/// to the caller. Resource release follows each child's handler contract.
-static inline void _taskCallChildRingExits(Task* firstChild)
-{
-    Task* child;
-
-    child = firstChild;
-    // Clear the parent before dispatch; read the preserved successor afterward.
-    do {
-        child->parent = NULL;
-        child->exitCallback(child);
-        child = child->nextSibling;
-    } while (child != firstChild);
-}
-
+/* Pop each owned child before dispatch. Exit handlers may free that child,
+ * remove another child, or perform a nested walk; none of its bytes are read
+ * afterwards. The parent remains live throughout this operation. */
 void taskCallChildExits(Task* parentTask)
 {
-    Task* firstChild;
-    Task* childHead;
-
-    childHead = parentTask->firstChild;
-    if (childHead != NULL) {
-        firstChild = childHead;
-        _taskCallChildRingExits(firstChild);
+    Task* child;
+    while ((child = parentTask->firstChild) != NULL) {
+        _taskDetachForReparent(child);
+        child->exitCallback(child);
     }
-    parentTask->firstChild = NULL;
 }
 
 void taskCallExit(Task* task)
@@ -471,42 +434,38 @@ void taskCallExit(Task* task)
     task->exitCallback(task);
 }
 
-/// Detaches a task from its parent's circular child ring while keeping it live.
-///
-/// `task` must be non-NULL and live throughout the call. If it has a parent,
-/// that live parent's `firstChild` must head a closed ring containing `task`,
-/// with live siblings whose `parent` identifies that owner. Removal preserves
-/// the remaining siblings' order and advances the head only when removing it;
-/// removing an only child clears the head. The detached task has `parent == NULL`
-/// and `nextSibling == task`.
-///
-/// A parentless task is left unchanged, including its sibling link. The task
-/// keeps its children, execution-list links and resources; no handlers run.
+/* A parent reference need not be an owning ring membership: attachments
+ * and projectiles also borrow their actor through this field. Only unlink an
+ * actual member; retiring a borrowed reference must preserve other children. */
 static inline void _taskDetachForReparent(Task* task)
 {
-    Task* oldParent;
-    Task* nextSibling;
-    Task* predecessor;
-
-    oldParent = task->parent;
-    if (oldParent != NULL) {
-        nextSibling = task->nextSibling;
-        if (nextSibling == task) {
-            oldParent->firstChild = NULL;
-        } else {
-            if (oldParent->firstChild == task) {
-                oldParent->firstChild = nextSibling;
+    Task* parent = task->parent;
+    Task* head = parent != NULL ? parent->firstChild : NULL;
+    if (head != NULL) {
+        Task* predecessor = head;
+        do {
+            if (predecessor->nextSibling == task) {
+                if (task->nextSibling == task) {
+                    parent->firstChild = NULL;
+                } else {
+                    predecessor->nextSibling = task->nextSibling;
+                    if (head == task) {
+                        parent->firstChild = task->nextSibling;
+                    }
+                }
+                break;
             }
-            // The child ring has only forward links, so locate the predecessor.
-            predecessor = task;
-            while (predecessor->nextSibling != task) {
-                predecessor = predecessor->nextSibling;
-            }
-            predecessor->nextSibling = task->nextSibling;
-            task->nextSibling        = task;
-        }
-        task->parent = NULL;
+            predecessor = predecessor->nextSibling;
+        } while (predecessor != head);
     }
+    task->parent = NULL;
+    task->nextSibling = task;
+}
+
+void taskSetParentReference(Task* task, Task* parent)
+{
+    _taskDetachForReparent(task);
+    task->parent = parent;
 }
 
 void taskDetachFromParent(Task* task)
@@ -572,9 +531,8 @@ void taskInitList(TaskNode* listHead)
 /// cursor, clearing `display->stopTaskWalk` only in that branch. Otherwise reads
 /// the current successor without unlinking or freeing. Returns that borrowed
 /// task, or NULL at the list end, without dispatching a callback. Callers consume
-/// a stop request equal to one before reaching this helper. An exit that already
-/// freed an unmarked cursor must retain its inspected bytes without reuse until
-/// advancement; this helper does not extend the released allocation's lifetime.
+/// a stop request equal to one before reaching this helper. The dispatch
+/// boundary excludes retired cursors before calling it.
 static inline Task* _taskCollectReleasedAndAdvance(Task* cursor, DisplayState* display)
 {
     Task* nextTask;
@@ -587,6 +545,26 @@ static inline Task* _taskCollectReleasedAndAdvance(Task* cursor, DisplayState* d
         return nextTask;
     }
     return cursor->node.next;
+}
+
+static Task* _taskDispatchAndAdvance(Task* task, DisplayState* display, TaskFunc callback)
+{
+    TaskDispatchFrame frame = { _gTaskDispatchFrame, task, task->node.next };
+    Task* next;
+    _gTaskDispatchFrame = &frame;
+    if (callback != NULL) {
+        callback(task);
+    }
+    if (display->stopTaskWalk == TASK_WALK_STOP_REQUESTED) {
+        display->stopTaskWalk = 0;
+        next = NULL;
+    } else if (frame.cursor == NULL) {
+        next = frame.successor;
+    } else {
+        next = _taskCollectReleasedAndAdvance(frame.cursor, display);
+    }
+    _gTaskDispatchFrame = frame.previous;
+    return next;
 }
 
 void taskExecList(TaskNode* listHead)
@@ -602,13 +580,7 @@ void taskExecList(TaskNode* listHead)
 #ifdef __psyz
         gHostCurrentTaskCallback = (void*)currentTask->callback;
 #endif
-        currentTask->callback(currentTask);
-        // A callback can replace the world; stop before reading its cursor again.
-        if (display->stopTaskWalk == TASK_WALK_STOP_REQUESTED) {
-            display->stopTaskWalk = 0;
-            return;
-        }
-        currentTask = _taskCollectReleasedAndAdvance(currentTask, display);
+        currentTask = _taskDispatchAndAdvance(currentTask, display, currentTask->callback);
         if (currentTask != NULL) {
             goto dispatchTask;
         }
@@ -628,21 +600,11 @@ TaskDesc* taskGetDescAt(TaskDesc* table, u32 index)
 
 void taskRequestKill(Task* task, s32 result)
 {
-    Task* firstChild;
-    Task* childHead;
-
     // Publish the result and suspend updates until the caller polls the request.
     task->status           = TASK_STATUS_STOP_REQUESTED;
     task->extraState.value = result;
     task->callback         = taskNoopCallback;
-
-    // Exit children now; leave this task's own exit for the polling caller.
-    childHead = task->firstChild;
-    if (childHead != NULL) {
-        firstChild = childHead;
-        _taskCallChildRingExits(firstChild);
-    }
-    task->firstChild = NULL;
+    taskCallChildExits(task);
 }
 
 bool taskPollKill(Task* task, s32* resultOut)
@@ -705,6 +667,7 @@ static void _taskUnlinkFromSelectedList(Task* task)
 /// No handlers run here; the pointer is invalid on return.
 static void _taskFree(Task* task)
 {
+    _taskNotifyRetirement(task);
     memFree(task);
 }
 
@@ -724,13 +687,7 @@ void taskExecDefaultList(TaskNode* unusedListHead)
             currentTask->callback = taskKill;
         }
 #endif
-        currentTask->callback(currentTask);
-        // A callback can replace the world; stop before reading its cursor again.
-        if (display->stopTaskWalk == TASK_WALK_STOP_REQUESTED) {
-            display->stopTaskWalk = 0;
-            return;
-        }
-        currentTask = _taskCollectReleasedAndAdvance(currentTask, display);
+        currentTask = _taskDispatchAndAdvance(currentTask, display, currentTask->callback);
         if (currentTask != NULL) {
             goto dispatchTask;
         }
@@ -751,20 +708,12 @@ void taskExecListForPriority(TaskNode* listHead, s32 priority)
         selectedPriority = priority & TASK_PRIORITY_MASK;
         display          = &gDisplayState;
     dispatchTask:
-        if (currentTask->priority == selectedPriority) {
-            currentTask->callback(currentTask);
-        }
-        // A callback can replace the world; stop before reading its cursor again.
-        if (display->stopTaskWalk == TASK_WALK_STOP_REQUESTED) {
-            display->stopTaskWalk = 0;
-            goto restoreSelection;
-        }
-        currentTask = _taskCollectReleasedAndAdvance(currentTask, display);
+        currentTask = _taskDispatchAndAdvance(currentTask, display,
+            currentTask->priority == selectedPriority ? currentTask->callback : NULL);
         if (currentTask != NULL) {
             goto dispatchTask;
         }
     }
-restoreSelection:
     _gTaskActiveList = savedListHead;
 }
 
@@ -782,20 +731,12 @@ void taskCallExitForPriority(TaskNode* listHead, s32 priority)
         selectedPriority = priority & TASK_PRIORITY_MASK;
         display          = &gDisplayState;
     dispatchTask:
-        if (currentTask->priority == selectedPriority) {
-            taskCallExit(currentTask);
-        }
-        // A callback can replace the world; stop before reading its cursor again.
-        if (display->stopTaskWalk == TASK_WALK_STOP_REQUESTED) {
-            display->stopTaskWalk = 0;
-            goto restoreSelection;
-        }
-        currentTask = _taskCollectReleasedAndAdvance(currentTask, display);
+        currentTask = _taskDispatchAndAdvance(currentTask, display,
+            currentTask->priority == selectedPriority ? taskCallExit : NULL);
         if (currentTask != NULL) {
             goto dispatchTask;
         }
     }
-restoreSelection:
     _gTaskActiveList = savedListHead;
 }
 

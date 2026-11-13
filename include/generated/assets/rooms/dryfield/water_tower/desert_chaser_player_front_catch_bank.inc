@@ -3,7 +3,7 @@
 
 #include "gameplay/animation.h"
 
-static AnimationSet* _gDesertChaserFrontCatchPlayerAnimSets[5] = {
+static AnimationSet* _gDesertChaserFrontCatchPlayerAnimSets[6] = {
     [1] = &_gStingerPuppetPlayerKnockbackFrontClip,
     [2] = &_gStingerPuppetPlayerKnockbackRecoverFrontClip,
     [3] = &_gAyaHitHeadClip,

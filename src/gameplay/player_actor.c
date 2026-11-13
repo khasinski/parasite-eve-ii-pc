@@ -1,3 +1,4 @@
+#include "port/fixed_math.h"
 #include "gameplay/player_actor.h"
 
 #include <psyz.h>
@@ -6353,7 +6354,7 @@ static inline Task* _playerActorSpawnAttachment(Task* actorTask, s32 attachmentI
         return NULL;
     }
     // Keep the first update's draw flags and parent the anchor beneath its rig joint.
-    task->parent                      = actorTask;
+    taskSetParentReference(task, actorTask);
     attachmentCoord                   = task->extra.tmd->coords;
     attachmentCoord->parent           = parentCoord;
     attachmentCoord->param.clearFlags = false;
@@ -6426,7 +6427,7 @@ inline static Task* _playerActorSpawnEquippedWeapon(Task* parent, s32 characterI
         return NULL;
     }
     weaponModel                   = weaponTask->extra.tmd;
-    weaponTask->parent            = parent;
+    taskSetParentReference(weaponTask, parent);
     weaponCoord                   = weaponModel->coords;
     weaponCoord->parent           = parentCoord;
     weaponCoord->param.clearFlags = true;
@@ -6654,16 +6655,16 @@ static s32 _playerActorGetIdleHealthBand(void)
         PLAYER_ACTOR_IDLE_HEALTH_AT_MOST_QUARTER = 2,
     };
     const PlayerStatus* playerStatus;
-    s32                 shiftedMaxHp;
+    s32                 signedMaxHp;
     s32                 healthBand;
 
     playerStatus = &gPlayerStatus;
-    shiftedMaxHp = (u16)playerStatus->hpMax << 16;
-    if ((shiftedMaxHp >> 17) < playerStatus->hp) {
+    signedMaxHp = peSignExtend16(playerStatus->hpMax);
+    if (peShiftRightSigned32(signedMaxHp, 1) < playerStatus->hp) {
         healthBand = PLAYER_ACTOR_IDLE_HEALTH_ABOVE_HALF;
     } else {
         healthBand = PLAYER_ACTOR_IDLE_HEALTH_ABOVE_QUARTER;
-        if ((shiftedMaxHp >> 18) >= playerStatus->hp) {
+        if (peShiftRightSigned32(signedMaxHp, 2) >= playerStatus->hp) {
             healthBand = PLAYER_ACTOR_IDLE_HEALTH_AT_MOST_QUARTER;
         }
     }
@@ -6946,7 +6947,7 @@ Task* playerActorSpawnAttachment(Task* actorTask, s32 attachmentIndex, s32 rigIn
         return NULL;
     }
     // Attach beneath the rig joint; the first update keeps spawn-time draw flags.
-    task->parent                      = actorTask;
+    taskSetParentReference(task, actorTask);
     attachmentCoord                   = task->extra.tmd->coords;
     attachmentCoord->parent           = parentCoord;
     attachmentCoord->param.clearFlags = false;
@@ -6974,7 +6975,7 @@ Task* playerActorSpawnWeaponModel(Task* parentTask, s32 characterId, s32 weaponI
         return NULL;
     }
     weaponModel                   = task->extra.tmd;
-    task->parent                  = parentTask;
+    taskSetParentReference(task, parentTask);
     weaponCoord                   = weaponModel->coords;
     weaponCoord->parent           = parentCoord;
     weaponCoord->param.clearFlags = true;
@@ -7037,7 +7038,7 @@ Task* playerActorSpawnGrenadeProjectile(Task* actorTask, s32 actorVariant, s32 l
         return NULL;
     }
     projectileModel                 = task->extra.tmd;
-    task->parent                    = actorTask;
+    taskSetParentReference(task, actorTask);
     projectileModel->coords->parent = muzzleCoord;
     return task;
 }

@@ -106,13 +106,13 @@ static void applyWidescreen(int enabled) {
     peBackgroundSetWidescreen(enabled);
 }
 
-static void saveOptions(void) {
+static void saveOptions(unsigned scale) {
     char temp[4120];
     snprintf(temp,sizeof temp,"%s.tmp",configPath);
     FILE* f=fopen(temp,"w");
     if(!f) { snprintf(statusText,sizeof statusText,"Could not save preferences."); return; }
     fprintf(f,"disc1=%s\ndisc2=%s\nscale=%u\naspect=%d\nwidescreen=%d\ndither=%d\ngeometry=%d\naa=%d\nfilter=%d\nlight=%d\nvolume=%u\n",
-        discPaths[0],discPaths[1],Psyz_VideoGetInternalResolution(),Psyz_VideoGetAspectMode(),
+        discPaths[0],discPaths[1],scale,Psyz_VideoGetAspectMode(),
         peBackgroundGetWidescreen(),
         Psyz_VideoGetDitheringMode(),Psyz_VideoGetGeometryCorrection(),Psyz_VideoGetAntialiasing(),
         Psyz_VideoGetModelFiltering(),Psyz_VideoGetDynamicLighting(),Psyz_AudioGetOutputVolume());
@@ -122,13 +122,14 @@ static void saveOptions(void) {
     if(failed || rename(temp,configPath)) snprintf(statusText,sizeof statusText,"Could not save preferences.");
 }
 
-static void loadOptions(void) {
+static unsigned loadOptions(void) {
+    unsigned scale=Psyz_VideoGetInternalResolution();
     configDir=getenv("PE2_CONFIG_DIR");
     if(!configDir) configDir=SDL_GetPrefPath("parasite-eve","parasite-eve-ii");
     if(!configDir) configDir=".";
     SDL_CreateDirectory(configDir);
     snprintf(configPath,sizeof configPath,"%s/settings.ini",configDir);
-    FILE* f=fopen(configPath,"r"); if(!f)return;
+    FILE* f=fopen(configPath,"r"); if(!f)return scale;
     int widescreen=0;
     char line[8192];
     while(fgets(line,sizeof line,f)) {
@@ -143,7 +144,9 @@ static void loadOptions(void) {
             continue;
         }
         char* end; long n=strtol(eq,&end,10); if(end==eq || *end)continue;
-        if(!strcmp(line,"scale") && n>=1 && n<=8) Psyz_VideoSetInternalResolution((unsigned)n);
+        if(!strcmp(line,"scale") && n>=1 && n<=8) {
+            if(Psyz_VideoSetInternalResolution((unsigned)n)==0)scale=(unsigned)n;
+        }
         else if(!strcmp(line,"aspect") && n>=0 && n<=1) Psyz_VideoSetAspectMode(n);
         else if(!strcmp(line,"widescreen") && n>=0 && n<=1) widescreen=(int)n;
         else if(!strcmp(line,"hd_backgrounds") && n>=0 && n<=1) hdEnabled=(int)n;
@@ -162,6 +165,7 @@ static void loadOptions(void) {
     }
     fclose(f);
     applyWidescreen(widescreen);
+    return widescreen && scale<2?2:scale;
 }
 
 
@@ -560,7 +564,7 @@ static void settings(void) {
             Psyz_VideoVSync(0);
         }
     }
-    saveOptions();
+    saveOptions(Psyz_VideoGetInternalResolution());
 done:
     SDL_DestroyTexture(texture);SDL_DestroyRenderer(renderer);SDL_DestroyWindow(fallback);
 #ifdef PE2_RENDERER_OPENGL
@@ -584,7 +588,10 @@ static bool settingsEvent(const SDL_Event* e) {
 }
 
 int peHostStartup(int argc,char** argv,const char** disc) {
-    loadOptions();
+    /* Startup can persist settings before the renderer applies its pending
+     * resolution. Preserve the loaded choice instead of the temporary 1x
+     * framebuffer; menu saves still use the live renderer's applied value. */
+    unsigned startupScale=loadOptions();
     openLog(argc,argv);
     int menuOnly=0,validateOnly=0,widescreenSeen=0,hdSeen=0;
     const char* hdEnvironment=getenv("PE2_HD_BACKGROUNDS");
@@ -609,6 +616,7 @@ int peHostStartup(int argc,char** argv,const char** disc) {
             }
             widescreenSeen=1;
             applyWidescreen(argv[++i][0]=='1');
+            if(peBackgroundGetWidescreen() && startupScale<2)startupScale=2;
         }
         else if(!strcmp(argv[i],"--hd-backgrounds")) {
             if(hdSeen || i+1>=argc || !*argv[i+1] || argv[i+1][0]=='-' ||
@@ -660,7 +668,7 @@ int peHostStartup(int argc,char** argv,const char** disc) {
             }
             fprintf(stderr,"USA Disc %d validated: %s\n",number,discPaths[i]);
         }
-        saveOptions();return 0;
+        saveOptions(startupScale);return 0;
     }
 #ifndef PE2_RENDERER_OPENGL
     s_prevOverlayInit=Psyz_OverlayInit_SDL3GPU(Host_OverlayInitGPU);
@@ -714,7 +722,7 @@ int peHostStartup(int argc,char** argv,const char** disc) {
             else peHostReportError("%s",*statusText?statusText:"The chosen file cannot be used as Disc 1.");
         }
     }
-    saveOptions();*disc=discPaths[0];return 1;
+    saveOptions(menuOnly?Psyz_VideoGetInternalResolution():startupScale);*disc=discPaths[0];return 1;
 }
 
 int peHostSwapDisc(int number) {

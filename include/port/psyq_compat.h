@@ -40,9 +40,7 @@ enum { InfoModeCurID = 1, InfoModeCurExID = 2, InfoModeCurExOffs = 3, InfoModeId
 int CdDiskReady(int mode);
 int CdGetDiskType(void);
 void StCdInterrupt(void);
-void InitHeap3(unsigned long* head, unsigned long size);
-void* malloc3(unsigned long size);
-void free3(void* ptr);
+#include "port/heap.h"
 
 /* The SDK's VectorNormal returns the length of v0; PsyZ's is void. */
 #include <math.h>

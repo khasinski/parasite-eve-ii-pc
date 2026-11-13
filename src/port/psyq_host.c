@@ -55,24 +55,6 @@ int CdGetDiskType(void)
 
 /* The host CD layer needs no interrupt pump. */
 
-/* libapi heap 3: the host allocator replaces the PlayStation arena. The arena
- * arguments are accepted and ignored. */
-void InitHeap3(unsigned long* head, unsigned long size)
-{
-    (void)head;
-    (void)size;
-}
-
-void* malloc3(unsigned long size)
-{
-    return malloc(size);
-}
-
-void free3(void* ptr)
-{
-    free(ptr);
-}
-
 /* libgte MatrixNormal: scale each row of the 3x3 to unit length (4096 = 1.0).
  * NOTE: approximates the SDK routine, whose exact fixed-point behaviour has not
  * been verified against hardware or an emulator trace. */
@@ -268,7 +250,6 @@ unsigned char gHostScratchpad[0x400] __attribute__((aligned(0x400)));
 
 unsigned char gHostRam[0x200000] __attribute__((aligned(0x1000)));
 unsigned int gHostGpuStatus[2] = { 0x1C000000u, 0 }; /* ready bits set */
-void* _freep; /* libapi heap3 search cursor; unused with the host allocator */
 
 /* libgpu non-blocking transfers: the host GPU queue is drained by DrawSync, so the blocking forms
  * followed by an idle report are equivalent. */

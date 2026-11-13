@@ -67,6 +67,7 @@ int peAssetsLoad(struct PeDisc* disc)
     /* A cache belongs to this mounted image. Package IDs recur on the other disc. */
     uint8_t* pkgData[4096] = {0};
     size_t   pkgSize[4096] = {0};
+    unsigned char attempted[4096] = {0};
     size_t          n;
     const PeAssetBinding* b = bindings(&n);
     static unsigned char* loaded;
@@ -101,7 +102,11 @@ int peAssetsLoad(struct PeDisc* disc)
             continue;
         }
         int pi = part->package;
-        if (!pkgData[pi]) {
+        /* Missing packages are common on the other disc. Cache misses only
+         * for this mount, so each absent package is scanned once and retried
+         * when the next disc is mounted. */
+        if (!attempted[pi]) {
+            attempted[pi] = 1;
             const PeAssetPackage* pk = &gPeAssetPackages[pi];
             pkgData[pi] = pk->stage < 0 ? peDiscReadFile(disc, "SLUS_010.42", &pkgSize[pi])
                                         : peDiscReadPackage(disc, pk->stage, pk->folder, pk->file, &pkgSize[pi]);

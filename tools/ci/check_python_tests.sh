@@ -4,6 +4,7 @@
 # it drives. Run from the repository root.
 set -e
 if [ -f venv/bin/python3 ]; then PY=venv/bin/python3; else PY=python3; fi
+"$PY" -m unittest discover -s tests -p 'animation_bank_codegen_test.py' -v
 test_build=${1:-build-port}
 cmake --build "$test_build" --target hd_native_decode --parallel
 export PE2_HD_TEST_DECODER="$(cd "$test_build" && pwd)/hd_native_decode"

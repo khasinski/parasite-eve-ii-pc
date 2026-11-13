@@ -1,4 +1,5 @@
 #include "types.h"
+#include "port/fixed_math.h"
 
 /* GCC orders BSS by first declaration; keep this prologue before the API headers. */
 s32 gMistShootingGalleryUnscaledBp;
@@ -839,7 +840,7 @@ static void _mistShootingGalleryRunCourse2(Task* controller)
             break;
         case COURSE_2_SEED_TARGETS:
             work->timer--;
-            if ((s16)work->timer <= 0) {
+            if (peSignExtend16(work->timer) <= 0) {
                 _mistShootingGallerySpawnTarget(controller, &_gMistShootingGalleryCourse2WaveScriptRef[work->spawnIndex]);
                 work->spawnIndex++;
                 if (work->spawnIndex == COURSE_2_INITIAL_TARGET_COUNT) {
@@ -867,7 +868,7 @@ static void _mistShootingGalleryRunCourse2(Task* controller)
         case COURSE_2_START_ROUND:
             timerBeforeDecrement = work->timer;
             work->timer          = timerBeforeDecrement - 1;
-            if ((s16)timerBeforeDecrement <= 0) {
+            if (peSignExtend16(timerBeforeDecrement) <= 0) {
                 work->timer = COURSE_2_ROUND_START_DELAY_FRAMES;
                 work->phase++;
                 taskSpawnFromTable(gMistShootingGalleryTaskDescs, MIST_SHOOTING_GALLERY_TASK_RED_FLASH, 0, 0);
@@ -977,7 +978,7 @@ static void _mistShootingGalleryRunCourse3(Task* controller)
             break;
         case COURSE_3_SEED_TARGETS:
             work->timer--;
-            if ((s16)work->timer <= 0) {
+            if (peSignExtend16(work->timer) <= 0) {
                 _mistShootingGallerySpawnTarget(controller, &_gMistShootingGalleryCourse3WaveScriptRef[work->spawnIndex]);
                 work->spawnIndex++;
                 if (work->spawnIndex == COURSE_3_INITIAL_TARGET_COUNT) {
@@ -991,7 +992,7 @@ static void _mistShootingGalleryRunCourse3(Task* controller)
             break;
         case COURSE_3_TURN_INSTRUCTIONS:
             work->timer--;
-            if ((s16)work->timer <= 0) {
+            if (peSignExtend16(work->timer) <= 0) {
                 _mistShootingGalleryShowCaption(COURSE_3_CAPTION_COMMAND, work->captionStep, CAPTION_DISMISS_BUTTONS);
                 if (work->captionStep == COURSE_3_TURN_LAST_KEY) {
                     work->timer = COURSE_3_READY_DELAY_FRAMES;
@@ -1271,7 +1272,7 @@ static void _mistShootingGalleryFinishCourse(Task* controller)
             work->phase++;
             displayAcquireMenuHold();
         case PAUSE:
-            if ((s16)work->timer-- > 0) {
+            if (peSignExtend16(work->timer--) > 0) {
                 return;
             }
             work->timer = FLASH_TICKS;
@@ -1280,7 +1281,7 @@ static void _mistShootingGalleryFinishCourse(Task* controller)
             sndEvtRequestScriptStart(SOUND_MIST_SHOOTING_GALLERY_ROUND_START, 0, 0);
             return;
         case FLASH:
-            if ((s16)--work->timer > 0) {
+            if (peSignExtend16(--work->timer) > 0) {
                 return;
             }
             work->phase++;
@@ -1633,36 +1634,4 @@ static void _mistShootingGalleryCaptionModeTask(Task* task)
     }
 }
 
-/// Spawns, places and counts one scripted target mount for the active course.
-static Enemy* _mistShootingGallerySpawnTarget(Task* controller, const _MistShootingGallerySpawn* spawn)
-{
-    enum {
-        SPAWN_HIGH_HALF_SHIFT = 16,
-        TARGET_CLUT_ROW       = 2,
-    };
-    MistShootingGalleryWork* work;
-    Enemy*                   enemy;
-    TmdObject*               model;
-    GfxCoord*                rootCoord;
-
-    work  = controller->work;
-    enemy = enemySpawnFromTable(gShootingGalleryTargetsTaskDescriptors, SHOOTING_GALLERY_TARGETS_TASK_MOUNT, spawn->spawnArgLo | (spawn->spawnArgHi << SPAWN_HIGH_HALF_SHIFT), NULL);
-    if (enemy != NULL) {
-        // Reparent must detach from the actual previous owner. Overwriting parent
-        // first makes an unparented mount clear the controller's existing children.
-        taskReparent(controller, enemy->task);
-        model                    = enemy->task->extra.tmd;
-        model->texturePageOffset = 0;
-        model->clutRowOffset     = TARGET_CLUT_ROW;
-        // Both primitive-buffer halves must use the gallery palette.
-        tmdBuildBufferHalf(model);
-        tmdBuildBufferHalf(model);
-        rootCoord             = enemy->task->extra.tmd->coords;
-        rootCoord->coord.t[0] = spawn->x;
-        rootCoord->coord.t[1] = spawn->y;
-        rootCoord->coord.t[2] = spawn->z;
-        enemy->workType       = ENEMY_WORK_ACTOR;
-        work->liveTargets++;
-    }
-    return enemy;
-}
+#include "mist_shooting_gallery_spawn.inc.c"

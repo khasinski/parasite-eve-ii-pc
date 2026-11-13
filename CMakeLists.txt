@@ -3,7 +3,7 @@ if(CMAKE_HOST_APPLE AND NOT DEFINED CMAKE_OSX_DEPLOYMENT_TARGET
    AND (NOT DEFINED CMAKE_SYSTEM_NAME OR CMAKE_SYSTEM_NAME STREQUAL "Darwin"))
     set(CMAKE_OSX_DEPLOYMENT_TARGET "15.0" CACHE STRING "Minimum supported macOS version")
 endif()
-project(parasite-eve-ii-pc VERSION 0.3.4 LANGUAGES C)
+project(parasite-eve-ii-pc VERSION 0.3.5 LANGUAGES C)
 # Host cast audits and local tooling consume this on fresh build trees too.
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -124,6 +124,10 @@ pe_host_test(pad_trace_test SOURCES src/port/pad_trace.c)
 pe_host_test(hud_hp_packet_test INCLUDES include/decomp ${PE_GENERATED_DIR} DEFINES __psyz SKIP_ASM OPTIONS -w LINK psyz STRIP)
 pe_host_test(gallery_wave_ownership_test SOURCES src/main/task.c INCLUDES include/decomp ${PE_GENERATED_DIR} src/main DEFINES __psyz SKIP_ASM OPTIONS -w LINK psyz STRIP)
 pe_host_test(audio_startup_test DEFINES __psyz LINK psyz STRIP)
+pe_host_test(desert_chaser_catch_bank_test INCLUDES include/decomp ${PE_GENERATED_DIR} DEFINES __psyz SKIP_ASM LINK psyz)
+pe_host_test(host_heap_test SOURCES src/port/heap.c DEFINES __psyz LINK psyz)
+pe_host_test(fixed_math_test)
+
 pe_host_test(player_target_test SOURCES src/gameplay/player_target.c INCLUDES include/decomp DEFINES __psyz SKIP_ASM LINK psyz)
 pe_host_test(action_trigger_test SOURCES src/gameplay/collision_grid.c src/gameplay/object_lists.c
     INCLUDES include/decomp ${PE_GENERATED_DIR} DEFINES __psyz SKIP_ASM LINK psyz STRIP)
@@ -151,6 +155,7 @@ pe_host_test(memory_card_test SOURCES src/port/memory_card.c LINK psyz)
 # the ones in PE_DATA_TESTS, which read extracted assets given on the command line and are left to local runs.
 pe_host_test(asset_disc_cache_test SOURCES src/port/asset_loader.c src/port/asset_registry.c)
 pe_host_test(disc_identity_test SOURCES src/port/disc_assets.c)
+pe_host_test(disc_read_test)
 
 pe_host_test(weapon_m950_test SOURCES src/weapons/m950/m950.c
     INCLUDES include/decomp ${PE_GENERATED_DIR} DEFINES __psyz SKIP_ASM LINK psyz)
@@ -226,6 +231,13 @@ foreach(_t IN LISTS _pe_targets)
 endforeach()
 set_tests_properties(hud_hp_packet_test gpu_state_test gpu_tpage_test caption_packet_test PROPERTIES ENVIRONMENT "PSYZ_HEADLESS=1;SDL_AUDIODRIVER=dummy")
 set_tests_properties(audio_startup_test PROPERTIES ENVIRONMENT "PSYZ_HEADLESS=1;SDL_AUDIODRIVER=dummy;PSYZ_AUDIO_CLOCK=video")
+if(CMAKE_C_FLAGS MATCHES "-fsanitize=[^ ]*address")
+    find_package(Python3 COMPONENTS Interpreter QUIET)
+    if(Python3_Interpreter_FOUND)
+        add_test(NAME host_heap_asan_diagnostics
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/host_heap_asan_test.py $<TARGET_FILE:host_heap_test>)
+    endif()
+endif()
 
 # These regressions avoid the POSIX filesystem fixtures and can run on Windows.
 set(PE_PORTABLE_GRAPHICS_TESTS
@@ -237,20 +249,13 @@ add_custom_target(portable_graphics_tests DEPENDS ${PE_PORTABLE_GRAPHICS_TESTS})
 set_tests_properties(${PE_PORTABLE_GRAPHICS_TESTS} PROPERTIES LABELS "portable-graphics")
 add_custom_target(portable_audio_tests DEPENDS audio_startup_test)
 set_tests_properties(audio_startup_test PROPERTIES LABELS "portable-audio")
-add_custom_target(portable_gameplay_tests DEPENDS gallery_wave_ownership_test fixed_log_test)
-set_tests_properties(gallery_wave_ownership_test fixed_log_test PROPERTIES LABELS "portable-gameplay")
-if(CMAKE_C_COMPILER_ID STREQUAL "GNU" AND NOT MINGW)
-    # GCC ASan retains global course/descriptor tables from the included room
-    # unit. Remove unrelated callbacks before instrumentation, keeping address
-    # and undefined-behaviour checks enabled on the ownership fixture itself.
-    target_compile_options(gallery_wave_ownership_test PRIVATE -flto)
-    target_link_options(gallery_wave_ownership_test PRIVATE -flto)
-endif()
+add_custom_target(portable_gameplay_tests DEPENDS gallery_wave_ownership_test fixed_log_test desert_chaser_catch_bank_test host_heap_test fixed_math_test task_teardown_test)
+set_tests_properties(gallery_wave_ownership_test fixed_log_test desert_chaser_catch_bank_test host_heap_test fixed_math_test task_teardown_test PROPERTIES LABELS "portable-gameplay")
 if(MINGW)
     # These fixtures retain only selected paths from complete gameplay units,
     # like scene_timing_buffer_test above. Do not retain unrelated COFF unwind
     # roots, or require definitions for paths the fixtures never execute.
-    foreach(_test IN ITEMS hud_hp_packet_test gallery_wave_ownership_test fixed_log_test)
+    foreach(_test IN ITEMS hud_hp_packet_test gallery_wave_ownership_test fixed_log_test task_teardown_test)
         target_compile_options(${_test} PRIVATE -fno-asynchronous-unwind-tables -fno-unwind-tables)
         if(PE_LLD_FORCE_UNRESOLVED)
             target_link_options(${_test} PRIVATE -Wl,-Xlink=-force:unresolved)

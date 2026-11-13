@@ -160,9 +160,8 @@ Task* (taskSpawnOnDefaultList)(s32 bank, TaskSpawnArg selector, TaskSpawnArg spa
 /// With `gDisplayState.immediateTaskFree` nonzero, the body and task are released
 /// before this call returns. Any task freed at its execution list's tail must
 /// belong to `gTaskDefaultList`, including recursively torn-down children; the
-/// previously selected list is restored. Child exit handlers must preserve their
-/// sibling successor through the caller's post-handler read, even when releasing
-/// the child immediately. Callers must not access the released task or resources.
+/// previously selected list is restored. Child exits may immediately release
+/// their task. Callers must not access the released task or resources.
 void taskKill(Task* task);
 
 /// Dispatches each child's exit handler, then clears the parent's child head.
@@ -173,10 +172,9 @@ void taskKill(Task* task);
 /// default teardown leaves the sibling traversal intact. Cleanup follows each
 /// handler's contract; a replacement handler may leave its child allocated.
 ///
-/// The successor is read after the handler returns. Handlers must preserve that
-/// link's storage and the remaining ring until consumed, including when freeing
-/// a child immediately; released storage must not be reused during traversal.
-/// Sibling links are not reset to self-links. The parent keeps its own resources,
+/// Each child is detached before dispatch. Its handler may immediately free it
+/// or remove another child; traversal never reads retired child storage.
+/// Detached sibling links are reset to self-links. The parent keeps its resources,
 /// handlers, parent relationship and execution-list membership. Its child head
 /// is cleared even when there were no children; no task is allocated here.
 void taskCallChildExits(Task* parentTask);
@@ -190,17 +188,22 @@ void taskCallChildExits(Task* parentTask);
 /// or its resources remain live after this call.
 void taskCallExit(Task* task);
 
+/// Borrows a parent pointer without joining its ownership/teardown ring.
+/// Detaches any existing owning relationship first. Killing this task does not
+/// remove the parent's other children; the borrowed parent must remain live.
+void taskSetParentReference(Task* task, Task* parent);
+
 /// Removes a live task from its parent's circular child ring.
 ///
 /// `task` must be non-NULL and remain live. When it has a parent, that parent
-/// must be live and its `firstChild` must head a closed ring containing this
-/// task. Each sibling is live and names that same parent. An only child is the
+/// must be live. Owning siblings form a closed ring naming that parent; a
+/// borrowed parent reference need not belong to the ring. An only child is the
 /// task whose `nextSibling` points at itself; removing it clears the parent's
 /// child head. Removing any other child keeps the remaining order and advances
 /// the head only when this task is the head. The task then has no parent, and
 /// its `nextSibling` points at itself.
 ///
-/// A parentless task is left unchanged, including its sibling link. The task
+/// Parentless tasks are also normalized to a self sibling link. The task
 /// keeps its own children, execution-list membership and resources, so a later
 /// teardown of the former parent does not dispatch this task. Nothing is
 /// allocated or released, and no handler runs.
@@ -210,8 +213,9 @@ void taskDetachFromParent(Task* task);
 ///
 /// Both arguments must be non-NULL and remain live throughout the call. The
 /// destination and any existing source ring must be closed rings of live tasks,
-/// with each child's `parent` identifying its ring owner. A parentless task must
-/// have `nextSibling == task`. The caller must avoid cycles in the teardown tree;
+/// with each child's `parent` identifying its ring owner. A borrowed source
+/// parent reference is detached without changing its other children. A parentless
+/// task must have `nextSibling == task`. The caller must avoid cycles in the teardown tree;
 /// this function performs no validation and NULL does not request detachment.
 ///
 /// Removal advances the old ring's head when needed, or clears it for an only
@@ -232,10 +236,8 @@ void taskReparent(Task* newParent, Task* task);
 /// A stop request equal to one is cleared and ends the walk before collection
 /// or cursor advancement, including after the callback marks the task.
 ///
-/// After dispatch, the walker reads the cursor's body kind and forward link.
-/// A handler freeing that task must preserve their storage until advancement,
-/// or request a stop before returning. In particular, immediate grenade exits
-/// rely on primary-heap release retaining those bytes with no intervening reuse.
+/// Callback retirement is tracked through nested walks. A handler may release
+/// its task or a subsequent task; traversal skips retired storage safely.
 /// Spawns can extend the walk; this is not a snapshot of the entry list.
 void taskCallExitForPriority(TaskNode* listHead, s32 priority);
 

@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.5
+
+- Prevent task callbacks and child teardown from accessing freed actors or skipping live tasks during scene changes.
+- Reserve the Desert Chaser's player release-animation slot explicitly instead of writing beyond the catch-animation banks.
+- Use native host allocations for the game heap, with independent allocation lifetimes and sanitizer coverage.
+- Validate disc read bounds and cache missing asset packages only until the next disc mount.
+- Make signed fixed-point shifts and shooting-gallery timer checks explicit across host compilers.
+- Preserve full 64-bit addresses in the Windows `uintptr` alias used by memory and sound-heap checks.
+- Preserve the selected picture-detail scale when startup saves preferences before the renderer applies its pending resolution.
+- Make the save editor's “Save changes to card” button more visible with a contrasting blue fill, white bold label and larger hit area.
+- Verify Windows x64 builds, portable regressions and hidden Direct3D 12 gameplay captures. The tester's actor/background mismatch and green/yellow combat artifacts remain under investigation; no fix for those two reports is claimed.
+
 ## 0.3.4
 
 - Fix malformed native GPU packets in room and actor variants that caused stretched models, giant triangles and green combat-overlay artifacts. Correct fixed-size inventory meter sprites.

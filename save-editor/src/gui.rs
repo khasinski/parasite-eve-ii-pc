@@ -16,7 +16,7 @@ pub struct EditorApp {
     container_path: String,
     status: String,
     active_slot: Option<usize>,
-    /// Working copy of the active slot; edits land here until "Save slot to card".
+    /// Working copy of the active slot; edits land here until "Save changes to card".
     working: Option<SlotData>,
     tab: Tab,
     item_filter: String,
@@ -134,11 +134,34 @@ impl EditorApp {
                         self.load_container(&path.to_string_lossy());
                     }
                 }
+                ui.separator();
+                let can_save = self.active_slot.is_some()
+                    && self.working.is_some()
+                    && self.container.is_some();
+                let save_button = egui::Button::new(
+                    egui::RichText::new("Save changes to card")
+                        .strong()
+                        .color(egui::Color32::WHITE),
+                )
+                .fill(egui::Color32::from_rgb(26, 86, 160))
+                .stroke(egui::Stroke::new(
+                    1.5_f32,
+                    egui::Color32::from_rgb(125, 195, 255),
+                ))
+                .min_size(egui::vec2(170.0, 32.0));
+                if ui
+                    .add_enabled(can_save, save_button)
+                    .on_hover_text(
+                        "Write changes in the selected slot to the open card or directory.",
+                    )
+                    .on_disabled_hover_text(
+                        "Open a card or directory and select a slot to save changes.",
+                    )
+                    .clicked()
+                {
+                    self.commit();
+                }
                 if let Some(index) = self.active_slot {
-                    ui.separator();
-                    if ui.button("Save slot to card").clicked() {
-                        self.commit();
-                    }
                     ui.label(format!("slot {index}"));
                 }
             });

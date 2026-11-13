@@ -13,6 +13,7 @@ struct PeDisc {
     FILE*    bin;
     long     sectorSize;
     long     userOffset;
+    uint32_t sectorCount; /* complete raw sectors physically present in the image */
     uint32_t cdfStart[6]; /* absolute sector of STAGE<n>.CDF, 0 if absent */
     uint32_t hedStart;
     uint8_t* hed;         /* STAGE0.HED contents (0x1B80 bytes) */
@@ -33,6 +34,7 @@ const char* peDiscError(void) { return gDiscError[0] ? gDiscError : "unknown err
 
 static int readSector(PeDisc* d, uint32_t lba, uint8_t* out)
 {
+    if (lba >= d->sectorCount) return 0;
     if (fseek(d->bin, (long)lba * d->sectorSize + d->userOffset, SEEK_SET) != 0) return 0;
     return fread(out, 1, SECTOR_USER, d->bin) == SECTOR_USER;
 }
@@ -108,7 +110,8 @@ static int isoFind(PeDisc* d, const char* name, uint32_t* lba, uint32_t* size)
     uint8_t pvd[SECTOR_USER], dir[SECTOR_USER];
     if (!readSector(d, 16, pvd) || memcmp(pvd + 1, "CD001", 5) != 0) return 0;
     uint32_t rootLba = rd32le(pvd + 156 + 2), rootSize = rd32le(pvd + 156 + 10);
-    for (uint32_t s = 0; s * SECTOR_USER < rootSize; s++) {
+    if (rootLba >= d->sectorCount || (uint64_t)rootSize > (uint64_t)(d->sectorCount - rootLba) * SECTOR_USER) return 0;
+    for (uint32_t s = 0; (uint64_t)s * SECTOR_USER < rootSize; s++) {
         if (!readSector(d, rootLba + s, dir)) return 0;
         for (size_t o = 0; o < SECTOR_USER && dir[o];) {
             size_t len = dir[o];
@@ -149,6 +152,12 @@ PeDisc* peDiscOpen(const char* cuePath)
     }
     d->sectorSize = SECTOR_RAW;
     d->userOffset = MODE2_USER_OFFSET;
+    if (fseek(d->bin, 0, SEEK_END) != 0 || ftell(d->bin) < 0) {
+        peDiscClose(d);
+        discFail("cannot determine the size of \"%s\"", bin);
+        return NULL;
+    }
+    d->sectorCount = (uint32_t)(ftell(d->bin) / SECTOR_RAW);
     if (!hasIsoVolume(d->bin, 16L * SECTOR_RAW + MODE2_USER_OFFSET)) {
         if (fseek(d->bin, 0, SEEK_END) == 0 && ftell(d->bin) < 17L * SECTOR_RAW)
             discFail("\"%s\" is too small to be a disc image (%ld bytes); it may be incomplete", bin, ftell(d->bin));
@@ -209,17 +218,20 @@ void peDiscClose(PeDisc* d)
 }
 
 /* Reads the first package chunk of the file starting at `sector` (absolute). */
-static uint8_t* readFilePackage(PeDisc* d, uint32_t sector, size_t* size)
+static uint8_t* readFilePackage(PeDisc* d, uint32_t sector, uint32_t endSector, size_t* size)
 {
     for (int guard = 0; guard < 64; guard++) {
         uint8_t  head[SECTOR_USER];
+        if (sector >= endSector) return NULL;
         if (!readSector(d, sector, head)) return NULL;
         uint8_t  type = head[0], end = head[1];
         uint32_t sectorLen = head[2] | head[3] << 8, count = rd32(head + 4);
         if (sectorLen <= 0x10 || sectorLen > SECTOR_USER || count == 0) return NULL;
+        if (count > endSector - sector) return NULL;
         if (type == 0) {
             size_t   cap = (size_t)count * SECTOR_USER, n = 0;
             uint8_t* raw = malloc(cap);
+            if (!raw) return NULL;
             for (uint32_t i = 0; i < count; i++) {
                 uint8_t sec[SECTOR_USER];
                 if (!readSector(d, sector + i, sec)) { free(raw); return NULL; }
@@ -240,10 +252,15 @@ static uint8_t* readFilePackage(PeDisc* d, uint32_t sector, size_t* size)
 
 uint8_t* peDiscReadFile(PeDisc* d, const char* name, size_t* size)
 {
+    if (!size) return NULL;
+    *size = 0;
+    if (!d || d->bad || !name) return NULL;
     uint32_t lba, bytes;
     if (!isoFind(d, name, &lba, &bytes)) return NULL;
+    if (lba >= d->sectorCount || !bytes || (uint64_t)bytes > (uint64_t)(d->sectorCount - lba) * SECTOR_USER) return NULL;
     uint8_t* out = malloc(((size_t)bytes + SECTOR_USER - 1) / SECTOR_USER * SECTOR_USER);
-    for (uint32_t i = 0; i * SECTOR_USER < bytes; i++)
+    if (!out) return NULL;
+    for (uint32_t i = 0; (uint64_t)i * SECTOR_USER < bytes; i++)
         if (!readSector(d, lba + i, out + (size_t)i * SECTOR_USER)) { free(out); return NULL; }
     *size = bytes;
     return out;
@@ -251,13 +268,19 @@ uint8_t* peDiscReadFile(PeDisc* d, const char* name, size_t* size)
 
 uint8_t* peDiscReadPackage(PeDisc* d, int stage, int folder, int file, size_t* size)
 {
+    if (!size) return NULL;
+    *size = 0;
+    if (!d || d->bad) return NULL;
     if (stage < 0 || stage > 5 || !d->cdfStart[stage]) return NULL;
     if (stage == 0) {
         if (!d->hed) return NULL;
         for (size_t o = 0x78; o + 8 <= 0x1B80; o += 8) { /* 3 stream records, then the file list */
             uint32_t id = rd32(d->hed + o), off = rd32(d->hed + o + 4);
             if (id == 0xFFFFFFFFu) break;
-            if (id == (uint32_t)file) return readFilePackage(d, d->cdfStart[0] + off, size);
+            if (id == (uint32_t)file) {
+                if (d->cdfStart[0] >= d->sectorCount || off >= d->sectorCount - d->cdfStart[0]) return NULL;
+                return readFilePackage(d, d->cdfStart[0] + off, d->sectorCount, size);
+            }
         }
         return NULL;
     }
@@ -267,13 +290,17 @@ uint8_t* peDiscReadPackage(PeDisc* d, int stage, int folder, int file, size_t* s
     for (int i = 0; i < 256; i++) {
         uint32_t id = rd32(list + i * 8), count = rd32(list + i * 8 + 4);
         if (count == 0) break;
+        if (base >= d->sectorCount || count > d->sectorCount - base) return NULL;
         if (id == (uint32_t)folder) {
             uint8_t head[SECTOR_USER];
             if (!readSector(d, base, head)) return NULL;
             for (int k = 0; k < 0xA2; k++) {
                 uint32_t fid = rd32(head + k * 8), off = rd32(head + k * 8 + 4);
                 if (off == 0) break;
-                if (fid == (uint32_t)file) return readFilePackage(d, base + off, size);
+                if (fid == (uint32_t)file) {
+                    if (off >= count) return NULL;
+                    return readFilePackage(d, base + off, base + count, size);
+                }
             }
             return NULL;
         }
@@ -285,8 +312,12 @@ uint8_t* peDiscReadPackage(PeDisc* d, int stage, int folder, int file, size_t* s
 /* MSB-first bit reader; matches tools/peassets/lzss.py decode_lzss (ring starts zeroed, offset 0 ends). */
 uint8_t* peLzssDecode(const uint8_t* in, size_t inSize, size_t* outSize)
 {
+    if (!outSize) return NULL;
+    *outSize = 0;
+    if (!in && inSize) return NULL;
     size_t   cap = 1 << 20, n = 0, pos = 0;
     uint8_t* out = malloc(cap);
+    if (!out) return NULL;
     uint8_t  ring[256] = {0};
     unsigned ringPos = 0, mask = 0, buf = 0;
 
@@ -305,7 +336,12 @@ uint8_t* peLzssDecode(const uint8_t* in, size_t inSize, size_t* outSize)
     } while (0)
 #define EMIT(byte)                                            \
     do {                                                      \
-        if (n == cap) out = realloc(out, cap *= 2);           \
+        if (n == cap) {                                      \
+            if (cap > SIZE_MAX / 2) { free(out); return NULL; } \
+            uint8_t* grown = realloc(out, cap * 2);            \
+            if (!grown) { free(out); return NULL; }           \
+            out = grown; cap *= 2;                           \
+        }                                                    \
         ring[ringPos] = (byte);                               \
         ringPos = (ringPos + 1) & 0xFF;                       \
         out[n++] = (byte);                                    \
