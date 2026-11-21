@@ -2,6 +2,36 @@
 #include <stdlib.h>
 #include <string.h>
 #define CHECK(x) do { if (!(x)) { fprintf(stderr, "line %d: %s\n", __LINE__, #x); exit(1); } } while (0)
+static void setVar(const char* name, const char* value)
+{
+#ifdef _WIN32
+    CHECK(_putenv_s(name, value ? value : "") == 0);
+#else
+    CHECK(value ? setenv(name, value, 1) == 0 : unsetenv(name) == 0);
+#endif
+}
+static int varIs(const char* name, const char* value)
+{
+    const char* actual = getenv(name);
+    return value ? actual && strcmp(actual, value) == 0 : !actual || !*actual;
+}
+/* Replays and recordings must not depend on wall time: emulated clocks by default, explicit choices kept. */
+static void checkDefaultClocks(void)
+{
+    const char* vars[] = {"PE2_PAD_REPLAY", "PE2_PAD_RECORD", "PSYZ_AUDIO_CLOCK", "PSYZ_RASTER_CLOCK"};
+    for (unsigned i = 0; i < 4; ++i) setVar(vars[i], NULL);
+    CHECK(pePadTraceDefaultClocks() == 0);
+    CHECK(varIs("PSYZ_AUDIO_CLOCK", NULL) && varIs("PSYZ_RASTER_CLOCK", NULL));
+    setVar("PE2_PAD_REPLAY", "route.pad");
+    CHECK(pePadTraceDefaultClocks() == (PE_PAD_CLOCK_AUDIO | PE_PAD_CLOCK_RASTER));
+    CHECK(varIs("PSYZ_AUDIO_CLOCK", "video") && varIs("PSYZ_RASTER_CLOCK", "virtual"));
+    CHECK(pePadTraceDefaultClocks() == 0); /* idempotent */
+    setVar("PE2_PAD_REPLAY", NULL); setVar("PSYZ_RASTER_CLOCK", NULL);
+    setVar("PE2_PAD_RECORD", "new.pad"); setVar("PSYZ_AUDIO_CLOCK", "host");
+    CHECK(pePadTraceDefaultClocks() == PE_PAD_CLOCK_RASTER);
+    CHECK(varIs("PSYZ_AUDIO_CLOCK", "host") && varIs("PSYZ_RASTER_CLOCK", "virtual"));
+    for (unsigned i = 0; i < 4; ++i) setVar(vars[i], NULL);
+}
 static FILE* textFile(const char* text)
 {
     FILE* f = tmpfile(); CHECK(f); CHECK(fputs(text, f) >= 0); rewind(f); return f;
@@ -39,5 +69,6 @@ int main(void)
     }
     CHECK(pePadControlParse("quit\n", &count, &mask) == 0);
     CHECK(count == 17 && mask == 23);
-    puts("pad trace: exact digital/analog samples, frame order, EOF and malformed input OK");
+    checkDefaultClocks();
+    puts("pad trace: exact digital/analog samples, frame order, EOF, malformed input and replay clock defaults OK");
 }

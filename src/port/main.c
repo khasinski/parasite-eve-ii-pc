@@ -11,6 +11,7 @@
 #include "gamemain.h"
 
 #include "port/crash_report.h"
+#include "port/pad_trace.h"
 #include "main/gamemain.h"
 #include "main/mc.h"
 #include "main/display.h"
@@ -43,12 +44,18 @@ static void installCrashReporter(void)
 /* Port entry. Disc mounting goes here once the runtime loader exists; then the
  * original start-up path runs on the host stack (no SetSp). */
 int main(int argc, char** argv) {
+    /* Input traces replay only on emulated time: set before PsyZ/SDL read their clocks. */
+    int clocks = pePadTraceDefaultClocks();
     /* Reports go to standard error until peHostStartup knows the preferences folder. */
     installCrashReporter();
     /* Disc image: first argument, or PE2_DISC. Game data is read from it at run time. */
     const char* disc = NULL;
     int startup = peHostStartup(argc, argv, &disc);
     if (startup <= 0) return startup < 0 ? 2 : 0;
+    if (clocks)
+        fprintf(stderr, "[pad] input trace: deterministic clocks (%s%s%s); set PSYZ_AUDIO_CLOCK/PSYZ_RASTER_CLOCK=host to opt out\n",
+                clocks & PE_PAD_CLOCK_AUDIO ? "PSYZ_AUDIO_CLOCK=video" : "", clocks == (PE_PAD_CLOCK_AUDIO | PE_PAD_CLOCK_RASTER) ? ", " : "",
+                clocks & PE_PAD_CLOCK_RASTER ? "PSYZ_RASTER_CLOCK=virtual" : "");
     if (Psyz_CdSetDiskPath(disc) != 0) {
         peHostReportError("Cannot mount the disc image \"%s\". Check that the file exists and that it is a CUE sheet or BIN "
                           "image of the North American Parasite Eve II (disc 1). Choose another image with --host-menu.", disc);

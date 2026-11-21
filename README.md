@@ -101,7 +101,8 @@ and copy the result back (see [docs/PORT_PLAN.md](docs/PORT_PLAN.md)).
 | `PE2_LOCATION_AUDIT=1` | list every area's room/warp counts, check every warp trigger against them, then exit; `tools/port/location_sweep.py` starts a game at each warp |
 | `PE2_FAST=1` | no frame limiter during movies |
 | `PE2_AUTOPRESS=<tick>` | scripted Start/Cross from that tick |
-| `PE2_PAD_REPLAY=<file>` / `PE2_PAD_RECORD=<file>` | replay or record input (see `tools/port/make_gallery_input.py`) |
+| `PE2_PAD_REPLAY=<file>` / `PE2_PAD_RECORD=<file>` | replay or record input (see `tools/port/make_gallery_input.py`); both default PsyZ to emulated time (`PSYZ_AUDIO_CLOCK=video`, `PSYZ_RASTER_CLOCK=virtual`) so a replay is repeatable; set either to `host` to opt out |
+| `PE2_TRACE=1` / `PE2_TRACE=state` | log the pad tick every 60 ticks; `state` adds location, event state, game clocks, RNG, HP/EXP and player position, to compare two replays line by line |
 | `PE2_DUMP_ASSETS=<file>` | write one hash per array loaded from the disc (to compare two builds or two discs) |
 
 ## How it is built

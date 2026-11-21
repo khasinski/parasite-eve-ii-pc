@@ -34,6 +34,9 @@ extern void Psyz_PauseHostClock_SDL3(_Bool paused);
 #include "main/fs.h"
 #include "main/display.h"
 #include "main/gamemain.h"
+#include "main/session.h"
+#include "main/wipsys.h"
+#include "main/random.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -343,8 +346,25 @@ static void pePadSkipIntro(int port, int tick)
 
 static void pePadTraceTick(int port, int tick)
 {
-    if (port == 0 && getenv("PE2_TRACE") && (tick % 60) == 0) {
+    static int mode = -1;
+    if (mode < 0) {
+        const char* trace = getenv("PE2_TRACE");
+        mode = !trace ? 0 : strcmp(trace, "state") == 0 ? 2 : 1;
+    }
+    if (port == 0 && mode && (tick % 60) == 0) {
         fprintf(stderr, "[trace] tick=%d movieStep=%d demo=%d\n", tick, gCdCmdQueue.movieStep, gDisplayState.demoScene);
+        /* PE2_TRACE=state also prints the replay-relevant simulation state, so
+         * two replays (or two builds) can be compared line by line. */
+        if (mode == 2) {
+            const GameLocationKey* at = gGameSession ? &gGameSession->location : NULL;
+            const MATRIX* pos = playerStatusCoordMtx(&gPlayerStatus);
+            fprintf(stderr, "[state] tick=%d loc=%d,%d,%d,%d,%d,%d event=%d frame=%d game=%d loop=%d vsync=%d rng=%08x hp=%d exp=%d pos=%d,%d,%d\n",
+                    tick, at ? at->stage : -1, at ? at->area : -1, at ? at->roomState : -1, at ? at->view : -1,
+                    at ? at->warp : -1, at ? at->variant : -1, gGameSession ? gGameSession->eventState : -1,
+                    gDisplayState.frameCount, gDisplayState.gameTick, gDisplayState.loopTicks, gDisplayState.vsyncCount,
+                    (unsigned)gRandomLcgState, gPlayerStatus.hp, (int)gPlayerStatus.exp,
+                    pos ? (int)pos->t[0] : 0, pos ? (int)pos->t[1] : 0, pos ? (int)pos->t[2] : 0);
+        }
     }
 }
 

@@ -75,3 +75,24 @@ int pePadControlParse(const char* line, uint32_t* count, uint16_t* mask)
     *mask = (uint16_t)buttons;
     return 1;
 }
+
+static int setDefault(const char* name, const char* value)
+{
+    const char* current = getenv(name);
+    if (current && *current) return 0;
+#ifdef _WIN32
+    return _putenv_s(name, value) == 0;
+#else
+    return setenv(name, value, 1) == 0;
+#endif
+}
+
+int pePadTraceDefaultClocks(void)
+{
+    const char *replay = getenv("PE2_PAD_REPLAY"), *record = getenv("PE2_PAD_RECORD");
+    if (!(replay && *replay) && !(record && *record)) return 0;
+    int set = 0;
+    if (setDefault("PSYZ_AUDIO_CLOCK", "video")) set |= PE_PAD_CLOCK_AUDIO;
+    if (setDefault("PSYZ_RASTER_CLOCK", "virtual")) set |= PE_PAD_CLOCK_RASTER;
+    return set;
+}
