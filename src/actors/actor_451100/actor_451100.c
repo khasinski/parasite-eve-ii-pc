@@ -309,14 +309,12 @@ static AnimationPlayRequest _gActor451100PlayerClip8Reset = { { .index = 1 }, 8,
 /// remain loaded while the player uses the installed pointers.
 #include "assets/rooms/neo_ark/submarine_tunnel/player_scene_bank.inc"
 
-/// Installs four player clips and the following raw words into the equipped bank.
+/// Installs `_gActor451100PlayerAnimationExtensionSets` as the player bank's extension ids 47 onward.
 ///
-/// Copies the full 32-word extension synchronously: four set addresses, this
-/// request's two words, the next five playback requests and the following
-/// script's first opcode. Only entries 47..50 are playable sets. Preserve this
-/// declaration order and copy length; the cast exposes the stored word span,
-/// including non-pointer data. Clip storage stays borrowed until bank playback ends.
-static AnimationBankCopyRequest _gActor451100PlayerAnimationBankCopy = { _gActor451100PlayerAnimationExtensionSets, ANIMATION_BANK_EXTENSION_CAPACITY };
+/// The original copied 32 words, reading past the list into adjacent package data
+/// that no script plays; the port copies only the list. Dispatch borrows the request;
+/// the copied clips stay borrowed through playback.
+static AnimationBankCopyRequest _gActor451100PlayerAnimationBankCopy = { _gActor451100PlayerAnimationExtensionSets, ARRAY_SIZE(_gActor451100PlayerAnimationExtensionSets) };
 
 /// Blends the player to installed clip 47 over eight normal-rate frames.
 ///

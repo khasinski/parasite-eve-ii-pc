@@ -66,7 +66,6 @@ enum {
     DRYFIELD_TOILET_PLAYER_EVENT_CLIP48              = ANIMATION_BANK_BASE_SET_COUNT + 1,
     DRYFIELD_TOILET_PLAYER_EVENT_CLIP49              = ANIMATION_BANK_BASE_SET_COUNT + 2,
     DRYFIELD_TOILET_PLAYER_SKIP_CLIP                 = 9,
-    DRYFIELD_TOILET_PLAYER_ANIMATION_COPY_WORD_COUNT = 4,
 };
 
 /// Commands in the stage-2/area-16 actor namespace and placed actor selectors.
@@ -102,8 +101,12 @@ static SVECTOR _gDryfieldToiletLesserStrangerMorphSavedNormals[DRYFIELD_TOILET_L
 /// is never played. Playback borrows the room's clips while the encounter plays.
 static AnimationSet* _gDryfieldToiletPlayerEncounterSets[3] = { NULL, &gDryfieldToiletAnimation03054, &gDryfieldToiletAnimation035A4 };
 
-/// Installs the encounter clips; reads four entries from a three-entry list.
-static AnimationBankCopyRequest _gDryfieldToiletPlayerAnimationBankCopy = { _gDryfieldToiletPlayerEncounterSets, DRYFIELD_TOILET_PLAYER_ANIMATION_COPY_WORD_COUNT };
+/// Installs `_gDryfieldToiletPlayerEncounterSets` as the player bank's extension ids 47 onward.
+///
+/// The original copied 4 words, reading past the list into adjacent package data
+/// that no script plays; the port copies only the list. Dispatch borrows the request;
+/// the copied clips stay borrowed through playback.
+static AnimationBankCopyRequest _gDryfieldToiletPlayerAnimationBankCopy = { _gDryfieldToiletPlayerEncounterSets, ARRAY_SIZE(_gDryfieldToiletPlayerEncounterSets) };
 
 /// Unreferenced bank-1 idle request, resetting clip 1 with world collision disabled.
 static AnimationPlayRequest _gDryfieldToiletUnusedPlayerIdleAnimation = { { .index = 1 }, DRYFIELD_TOILET_PLAYER_IDLE_CLIP, ANIMATION_BLEND_RESET, 0, ANIMATION_WORLD_COLLISION_DISABLE };

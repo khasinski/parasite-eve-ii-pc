@@ -191,11 +191,12 @@ TaskDesc gActor450200SceneTaskDescs[3] = {
 /// and the actor package loaded while the player's bank borrows these clips.
 #include "assets/rooms/neo_ark/observatory/companion_scene_player_bank.inc"
 
-/// Installs the companion scene's eight player clips and their adjacent raw words.
+/// Installs `_gActor450200CompanionScenePlayerAnimationSets` as the player bank's extension ids 47 onward.
 ///
-/// The count is the bank's 32-word capacity, including 24 words after the clip
-/// table. Dispatch copies synchronously; playback continues to borrow the clips.
-static AnimationBankCopyRequest _gActor450200CompanionScenePlayerBankCopyRequest = { _gActor450200CompanionScenePlayerAnimationSets, ANIMATION_BANK_EXTENSION_CAPACITY };
+/// The original copied 32 words, reading past the list into adjacent package data
+/// that no script plays; the port copies only the list. Dispatch borrows the request;
+/// the copied clips stay borrowed through playback.
+static AnimationBankCopyRequest _gActor450200CompanionScenePlayerBankCopyRequest = { _gActor450200CompanionScenePlayerAnimationSets, ARRAY_SIZE(_gActor450200CompanionScenePlayerAnimationSets) };
 
 /// Blends the player into companion-scene clip 47 over five frames with collision enabled.
 ///
@@ -258,12 +259,14 @@ static AnimationPlayRequest _gActor450200CompanionScenePlayerAnimation52Request 
 /// stored order and this package loaded while the companion borrows the clips.
 #include "assets/rooms/neo_ark/observatory/companion_bank.inc"
 
-/// Installs eight observatory companion clips and the 24 raw words following their table.
+/// Installs `_gActor450200CompanionAnimationSets` as the companion bank's extension ids 47 onward.
 ///
+/// The original copied 32 words, reading past the list into adjacent package data
+/// that no script plays; the port copies only the list. Dispatch borrows the request;
+/// the copied clips stay borrowed through playback.
 /// Scene entry and three talk scripts install the bank; the scene's skip script
-/// and third talk script rely on the installed extension. Dispatch copies the
-/// full 32 words synchronously, and playback continues to borrow the clips.
-static AnimationBankCopyRequest _gActor450200CompanionBankCopyRequest = { _gActor450200CompanionAnimationSets, ANIMATION_BANK_EXTENSION_CAPACITY };
+/// and third talk script rely on the installed extension.
+static AnimationBankCopyRequest _gActor450200CompanionBankCopyRequest = { _gActor450200CompanionAnimationSets, ARRAY_SIZE(_gActor450200CompanionAnimationSets) };
 
 /// Resets the companion to scene clip 47 before the player's first approach.
 ///
@@ -742,12 +745,12 @@ static AnimationPlayRequest _gActor450200SoloScenePlayerAnimation50Request = { {
 /// Disables world collision; requires the installed solo-scene player extension.
 static AnimationPlayRequest _gActor450200SoloScenePlayerAnimation51Request = { { .index = 1 }, ANIMATION_BANK_BASE_SET_COUNT + 4, ANIMATION_BLEND_INTERPOLATE, 10, ANIMATION_WORLD_COLLISION_DISABLE };
 
-/// Installs five solo-scene player clips and the 27 raw words following their table.
+/// Installs `_gActor450200SoloScenePlayerAnimationSets` as the player bank's extension ids 47 onward.
 ///
-/// Dispatch copies all 32 words synchronously into the equipped weapon bank's
-/// extension; only ids 47-51 are clips. Keep the adjacent records in stored order
-/// and this package loaded while playback borrows the installed clip data.
-static AnimationBankCopyRequest _gActor450200SoloScenePlayerBankCopyRequest = { _gActor450200SoloScenePlayerAnimationSets, ANIMATION_BANK_EXTENSION_CAPACITY };
+/// The original copied 32 words, reading past the list into adjacent package data
+/// that no script plays; the port copies only the list. Dispatch borrows the request;
+/// the copied clips stay borrowed through playback.
+static AnimationBankCopyRequest _gActor450200SoloScenePlayerBankCopyRequest = { _gActor450200SoloScenePlayerAnimationSets, ARRAY_SIZE(_gActor450200SoloScenePlayerAnimationSets) };
 
 /// Player placement at solo-scene setup and both normal and skipped endings.
 ///
@@ -873,13 +876,12 @@ static AnimationPlayRequest _gActor450200RoomVariantScenePlayerAnimation49Reques
 /// playback selects the equipped weapon bank in a copy of this request.
 static AnimationPlayRequest _gActor450200RoomVariantScenePlayerAnimation50Request = { { .index = 1 }, ANIMATION_BANK_BASE_SET_COUNT + 3, ANIMATION_BLEND_INTERPOLATE, 8, ANIMATION_WORLD_COLLISION_DISABLE };
 
-/// Installs the room-variant scene's four player clips and 28 following raw words.
+/// Installs `_gActor450200RoomVariantScenePlayerAnimationSets` as the player bank's extension ids 47 onward.
 ///
-/// Copies 32 words synchronously: the four pointers, five complete play requests
-/// and three words of the clip-49 request. Only extension ids 47-50 are clips.
-/// Preserve the records' stored order and keep the package loaded while the
-/// equipped weapon's bank borrows the installed clip data.
-static AnimationBankCopyRequest _gActor450200RoomVariantScenePlayerBankCopyRequest = { _gActor450200RoomVariantScenePlayerAnimationSets, ANIMATION_BANK_EXTENSION_CAPACITY };
+/// The original copied 32 words, reading past the list into adjacent package data
+/// that no script plays; the port copies only the list. Dispatch borrows the request;
+/// the copied clips stay borrowed through playback.
+static AnimationBankCopyRequest _gActor450200RoomVariantScenePlayerBankCopyRequest = { _gActor450200RoomVariantScenePlayerAnimationSets, ARRAY_SIZE(_gActor450200RoomVariantScenePlayerAnimationSets) };
 
 /// Player approach and arrival clips shared by both room-variant scene walks.
 ///

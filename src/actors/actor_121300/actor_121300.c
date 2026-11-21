@@ -115,7 +115,7 @@ typedef struct {
     u16            step;                // Scene step being carried out (`ACTOR_121300_STEP_*`)
     u16            stepState;           // Progress within the step, cleared when the script selects one (0 its opening work is still to do)
     s16            pulseFrames;         // Ticks since `ACTOR_121300_STEP_WAVE_PULSE` started its wave
-    s16            lampCursor;          // Lamp whose `endMarker` gates the shattering; nothing advances it, so it stays the first lamp
+    s16            lampCursor;          // Original shattering gate; nothing advances it (the gate now uses `lampsShattered`)
     u16            animSet;             // Index of the animation set the driven slots play
     u16            shatterState;        // (`ACTOR_121300_SHATTER_START`, `ACTOR_121300_SHATTER_RUNNING`)
     s16            shatterFrames;       // Ticks of shattering since the last lamp went out
@@ -446,9 +446,8 @@ static s16 _gActor121300AnimationFollowupSets[4] = {
 
 /// Twelve overhead lamps in shattering order, followed by a closing record.
 ///
-/// Positions use world-coordinate units. Debris spawn arguments must index
-/// 0..11; record 12 only closes the sentinel walk. Shattering checks the separate,
-/// unadvanced lamp cursor, so its cue timing must stop further debris spawns.
+/// Positions use world-coordinate units. Debris spawn arguments index 0..11;
+/// record 12 closes the walk, which shattering checks before each lamp.
 static _Actor121300Lamp _gActor121300Lamps[13] = {
     { 4950, -1750, 2570, 0 },
     { 5170, -1750, 2570, 0 },
@@ -1255,10 +1254,11 @@ static void _actor121300SpawnUpperRowSprites(Task* task, s16 dwindle)
 ///
 /// Requires live double work and the loaded Dryfield R08 room. Initialization
 /// enables debris and clears the count/timer; subsequent updates hide the next
-/// lamp's sprites, suppress its glow and spawn fifteen pieces. The sentinel
-/// check uses `lampCursor`, which this function never advances; the script must
-/// end shattering after at most twelve spawns; another would use the closing
-/// record as a lamp position. The actual cue-dependent maximum is unproven.
+/// lamp's sprites, suppress its glow and spawn fifteen pieces. Shattering stops
+/// at the closing record. The original checked the never-advanced `lampCursor`
+/// instead, so it kept counting while the scene cue held this state and spawned
+/// debris for lamp indices past the table (positions read from whatever followed
+/// it; the room's sprite and glow updates already ignore those indices).
 static void _actor121300ShatterLamps(Task* task)
 {
     enum {
@@ -1276,7 +1276,7 @@ static void _actor121300ShatterLamps(Task* task)
             work->shatterState        += 1;
             break;
         case ACTOR_121300_SHATTER_RUNNING:
-            if (_gActor121300Lamps[work->lampCursor].endMarker != ACTOR_121300_LAMP_END) {
+            if (_gActor121300Lamps[work->lampsShattered].endMarker != ACTOR_121300_LAMP_END) {
                 if (++work->shatterFrames >= ACTOR_121300_SHATTER_INTERVAL) {
                     // Hide the lamp's sprite batch in the room's view; the seventh lamp has none.
                     if (work->lampsShattered < ACTOR_121300_SPRITELESS_LAMP_INDEX) {

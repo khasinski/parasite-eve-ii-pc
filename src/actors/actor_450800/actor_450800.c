@@ -1046,24 +1046,24 @@ static AnimationPlayRequest _gActor450800NurseryCompanionClip1Reset = {
     .enableWorldCollision = ANIMATION_WORLD_COLLISION_DISABLE,
 };
 
-/// Installs the nursery's clips in the companion's current bank extension.
+/// Installs `_gActor450800NurseryCompanionAnimationSets` as the companion bank's extension ids 47 onward.
 ///
-/// Transfers 32 words from `_gActor450800NurseryCompanionAnimationSets`, including
-/// 21 words of following request data. The count is the transfer span, not
-/// the playable clip count; the source package must stay loaded for playback.
+/// The original copied 32 words, reading past the list into adjacent package data
+/// that no script plays; the port copies only the list. Dispatch borrows the request;
+/// the copied clips stay borrowed through playback.
 static AnimationBankCopyRequest _gActor450800NurseryCompanionBankCopy = {
     .sets  = _gActor450800NurseryCompanionAnimationSets,
-    .count = ANIMATION_BANK_EXTENSION_CAPACITY,
+    .count = ARRAY_SIZE(_gActor450800NurseryCompanionAnimationSets),
 };
 
-/// Installs the nursery's clips in the player's current bank extension.
+/// Installs `_gActor450800NurseryPlayerAnimationSets` as the player bank's extension ids 47 onward.
 ///
-/// Transfers 32 words from `_gActor450800NurseryPlayerAnimationSets`, including
-/// 15 words of following request data. The count is the transfer span, not
-/// the playable clip count; the source package must stay loaded for playback.
+/// The original copied 32 words, reading past the list into adjacent package data
+/// that no script plays; the port copies only the list. Dispatch borrows the request;
+/// the copied clips stay borrowed through playback.
 static AnimationBankCopyRequest _gActor450800NurseryPlayerBankCopy = {
     .sets  = _gActor450800NurseryPlayerAnimationSets,
-    .count = ANIMATION_BANK_EXTENSION_CAPACITY,
+    .count = ARRAY_SIZE(_gActor450800NurseryPlayerAnimationSets),
 };
 
 /// Commands of the nursery bodies' gun; their stage/area tags are ignored.

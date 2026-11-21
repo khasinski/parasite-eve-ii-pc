@@ -156,17 +156,19 @@ static AnimationPlayRequest _gActor146000PlayerIdleAnimation = { { .index = 1 },
 /// Resets the selected companion bank's idle clip, enabling world collision.
 static AnimationPlayRequest _gActor146000CompanionIdleAnimation = { { .index = 6 }, ACTOR_146000_IDLE_ANIMATION, ANIMATION_BLEND_RESET, 0, ANIMATION_WORLD_COLLISION_ENABLE };
 
-/// Copies 32 words from the player scene table into the current weapon bank's extension.
+/// Installs `_gActor146000PlayerAnimationBankExtension` as the player bank's extension ids 47 onward.
 ///
-/// Includes the adjacent request words described at the source table. Dispatch
-/// borrows this request; copied clip pointers remain borrowed through playback.
-static AnimationBankCopyRequest _gActor146000PlayerAnimationBankCopy = { _gActor146000PlayerAnimationBankExtension, ANIMATION_BANK_EXTENSION_CAPACITY };
+/// The original copied 32 words, reading past the list into adjacent package data
+/// that no script plays; the port copies only the list. Dispatch borrows the request;
+/// the copied clips stay borrowed through playback.
+static AnimationBankCopyRequest _gActor146000PlayerAnimationBankCopy = { _gActor146000PlayerAnimationBankExtension, ARRAY_SIZE(_gActor146000PlayerAnimationBankExtension) };
 
-/// Copies 32 words from the companion scene table into its selected bank's extension.
+/// Installs `_gActor146000CompanionAnimationBankExtension` as the companion bank's extension ids 47 onward.
 ///
-/// Includes the adjacent request words described at the source table. Dispatch
-/// borrows this request; copied clip pointers remain borrowed through playback.
-static AnimationBankCopyRequest _gActor146000CompanionAnimationBankCopy = { _gActor146000CompanionAnimationBankExtension, ANIMATION_BANK_EXTENSION_CAPACITY };
+/// The original copied 32 words, reading past the list into adjacent package data
+/// that no script plays; the port copies only the list. Dispatch borrows the request;
+/// the copied clips stay borrowed through playback.
+static AnimationBankCopyRequest _gActor146000CompanionAnimationBankCopy = { _gActor146000CompanionAnimationBankExtension, ARRAY_SIZE(_gActor146000CompanionAnimationBankExtension) };
 
 /// Player placement before the post-burner walk, in world units and facing negative X.
 static ActorTransform _gActor146000PlayerWalkStart = { { 4668, 0, -1337, 0 }, { 0, -ACTOR_TRANSFORM_ANGLE_TURN / 4, 0, 0 } };

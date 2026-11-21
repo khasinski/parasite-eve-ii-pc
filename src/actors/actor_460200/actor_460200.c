@@ -224,8 +224,12 @@ static AnimationPlayRequest _gActor460200PlayerClip1BlendRequest = { { .index = 
 /// played. The clips remain valid while this package is loaded.
 #include "assets/rooms/shelter/1f_tent/player_extension_bank.inc"
 
-/// Installs the tent-scene clips; reads 32 entries from a fifteen-clip list.
-static AnimationBankCopyRequest _gActor460200PlayerAnimationBankCopy = { _gActor460200PlayerExtensionSets, ANIMATION_BANK_EXTENSION_CAPACITY };
+/// Installs `_gActor460200PlayerExtensionSets` as the player bank's extension ids 47 onward.
+///
+/// The original copied 32 words, reading past the list into adjacent package data
+/// that no script plays; the port copies only the list. Dispatch borrows the request;
+/// the copied clips stay borrowed through playback.
+static AnimationBankCopyRequest _gActor460200PlayerAnimationBankCopy = { _gActor460200PlayerExtensionSets, ARRAY_SIZE(_gActor460200PlayerExtensionSets) };
 
 /// Soldier B clip 1; not dispatched by this package.
 static AnimationPlayRequest _gActor460200SoldierBClip1Request = { { .index = 1 }, ACTOR_460200_SOLDIER_B_CLIP_1, ANIMATION_BLEND_RESET, 0, ANIMATION_WORLD_COLLISION_DISABLE };

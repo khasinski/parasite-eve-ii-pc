@@ -585,7 +585,8 @@ static void _actor341900PlayGluttonAnimation(Task* task, s32 messageId, const An
 /// Samples a scene model's cached position for its three model lights.
 ///
 /// Requires a live model, writable light/colour matrices and a valid
-/// coordinate index (0 for a door half, 1 for a Glutton part). The cached XYZ
+/// coordinate index below the model's part count (0 for a door half or a
+/// single-part Glutton piece, 1 for a Glutton leg or body). The cached XYZ
 /// are passed unchanged to the world lighting query, in game units; no
 /// coordinate is composed or converted here. Borrows model storage and retains
 /// no position pointer.
@@ -768,7 +769,9 @@ static void _actor341900GluttonPartTask(Task* task)
     task->extra.tmd->flags =
         work->parent->extra.tmd->flags;
 
-    _actor341900UpdateModelLighting(task, 1);
+    // Legs light from their second coordinate. The three single-part pieces have no
+    // coordinate 1 (the original read past their one-element array), so they use their root.
+    _actor341900UpdateModelLighting(task, task->extra.tmd->partCount > 1 ? 1 : 0);
 }
 
 /// Starts the Glutton advance cue's child vibration and requests a long screen shake.

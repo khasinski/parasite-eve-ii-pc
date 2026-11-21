@@ -196,12 +196,12 @@ static ActorTransform _gActor151000WalkerDeparturePlacement = { { -4900, 0, -155
 /// Only the position's X/Z components are consumed; the orientation is unused.
 static ActorTransform _gActor151000WalkerDepartureTarget = { { -3600, 0, -12500, 0 }, { 0, 0, 0, 0 } };
 
-/// Installs three player clips and 29 following raw words in the equipped-bank extension.
+/// Installs `_gActor151000PlayerAnimationBankExtension` as the player bank's extension ids 47 onward.
 ///
-/// The fixed 32-word transfer intentionally includes adjacent requests, as
-/// documented on `_gActor151000PlayerAnimationBankExtension`. This request is
-/// borrowed through dispatch; the copied clip pointers remain borrowed afterwards.
-static AnimationBankCopyRequest _gActor151000PlayerAnimationBankCopy = { _gActor151000PlayerAnimationBankExtension, ANIMATION_BANK_EXTENSION_CAPACITY };
+/// The original copied 32 words, reading past the list into adjacent package data
+/// that no script plays; the port copies only the list. Dispatch borrows the request;
+/// the copied clips stay borrowed through playback.
+static AnimationBankCopyRequest _gActor151000PlayerAnimationBankCopy = { _gActor151000PlayerAnimationBankExtension, ARRAY_SIZE(_gActor151000PlayerAnimationBankExtension) };
 
 EvsCommand gActor151000GardenArrivalScript[47] = {
     // Set up the player bank and both actors while the scene is covered.

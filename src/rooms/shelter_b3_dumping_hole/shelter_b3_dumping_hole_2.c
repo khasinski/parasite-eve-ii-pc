@@ -1067,17 +1067,15 @@ static TaskDesc _gShelterB3DumpingHoleArrivalShakeTaskDescriptor = { { { TASK_BO
 
 /// Arrival-scene player clips at bank-extension indices 47..50.
 ///
-/// Index 47 is NULL; the script plays 48, 49 and 50 in order. The copy request
-/// transfers one word beyond these four pointers, copying its own source address
-/// into index 51. That extra word is not a clip and is never played here.
-/// Preserve the table and request consecutively and keep both loaded through copying.
+/// Index 47 is NULL; the script plays 48, 49 and 50 in order. The original copy
+/// request transferred one more word, its own source address, into index 51; it
+/// is not a clip and is never played, so the port copies only these four.
 static AnimationSet* _gShelterB3DumpingHoleArrivalAnimationSets[4] = { NULL, &_gShelterB3DumpingHoleAnimation0C810, &_gShelterB3DumpingHoleAnimation0CCB4, &_gShelterB3DumpingHoleAnimation0D9C4 };
 
-/// Copies the arrival clips and the following source-pointer word into the player's extension.
+/// Copies the arrival clips into the player's extension.
 ///
-/// The fifth word is retained original behavior, not a fifth playable set.
 /// Dispatch borrows this request and source; clip data stays loaded during playback.
-static AnimationBankCopyRequest _gShelterB3DumpingHoleArrivalAnimationBankCopy = { _gShelterB3DumpingHoleArrivalAnimationSets, ARRAY_SIZE(_gShelterB3DumpingHoleArrivalAnimationSets) + 1 };
+static AnimationBankCopyRequest _gShelterB3DumpingHoleArrivalAnimationBankCopy = { _gShelterB3DumpingHoleArrivalAnimationSets, ARRAY_SIZE(_gShelterB3DumpingHoleArrivalAnimationSets) };
 
 /// Unreferenced bank-1, clip-1 reset request with world collision enabled; purpose unproven.
 static AnimationPlayRequest D_shelter_b3_dumping_hole_8018AFE0 = { { .index = 1 }, 1, ANIMATION_BLEND_RESET, 0, ANIMATION_WORLD_COLLISION_ENABLE };

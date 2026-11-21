@@ -242,17 +242,14 @@ static TaskDesc _gDryfieldMainStreetCutsceneTaskDescriptors[2] = {
 /// the scene plays 48 followed by 49 after twenty ticks, and never plays 47 or 50.
 static AnimationSet* _gDryfieldMainStreetPlayerAnimationBankExtension[3] = { NULL, &_gDryfieldMainStreetAnimation03BF0, &_gDryfieldMainStreetAnimation03F84 };
 
-/// Authored transfer length, including the word after the three set pointers.
-enum { DRYFIELD_MAIN_STREET_ANIMATION_COPY_WORD_COUNT = 4 };
-
-/// Installs the first-visit clips in the equipped player's writable bank extension.
+/// Installs `_gDryfieldMainStreetPlayerAnimationBankExtension` as the player bank's extension ids 47 onward.
 ///
-/// Dispatch consumes the request and four source words synchronously. Its source
-/// pointer is also the fourth transferred word; keep it immediately after the
-/// set array. The copied clips require this room overlay through playback.
+/// The original copied 4 words, reading past the list into adjacent package data
+/// that no script plays; the port copies only the list. Dispatch borrows the request;
+/// the copied clips stay borrowed through playback.
 static AnimationBankCopyRequest _gDryfieldMainStreetPlayerAnimationBankCopy = {
     .sets  = _gDryfieldMainStreetPlayerAnimationBankExtension,
-    .count = DRYFIELD_MAIN_STREET_ANIMATION_COPY_WORD_COUNT,
+    .count = ARRAY_SIZE(_gDryfieldMainStreetPlayerAnimationBankExtension),
 };
 
 /// Retained five-word record matching the neighboring animation-play requests.
@@ -420,16 +417,22 @@ static EvsCommand _gDryfieldMainStreetFirstVisitSkipScript[16] = {
     { .opcode = EVENT_SCRIPT_OPCODE_END },
 };
 
-/// Ambient-effect gates for mapped views 1..8; views 2..4 enable the effect.
+/// Ambient-effect gates for the room's mapped views 1..13; views 2..4 enable the effect.
 ///
-/// Indexed by mapped view minus one. The controller also admits the room's
-/// views 9..13, whose reads exceed this eight-halfword object; their intended
-/// access model is unproven. Preserve the separate following mutable vector.
-static const u16 _gDryfieldMainStreetViewEffectModes[8] SECTION(".data") = {
+/// Indexed by mapped view minus one. The original table had eight entries, so
+/// views 9..13 read the smoke spawn position that followed it (sampled X, Y, Z
+/// and a zero pad, all far from `ROOM_EFFECT_VIEW_ENABLED`) and beyond: those
+/// views were always disabled, which their explicit entries keep.
+static const u16 _gDryfieldMainStreetViewEffectModes[ARRAY_SIZE(gDryfieldMainStreetViewCameras)] SECTION(".data") = {
     ROOM_EFFECT_VIEW_DISABLED,
     ROOM_EFFECT_VIEW_ENABLED,
     ROOM_EFFECT_VIEW_ENABLED,
     ROOM_EFFECT_VIEW_ENABLED,
+    ROOM_EFFECT_VIEW_DISABLED,
+    ROOM_EFFECT_VIEW_DISABLED,
+    ROOM_EFFECT_VIEW_DISABLED,
+    ROOM_EFFECT_VIEW_DISABLED,
+    ROOM_EFFECT_VIEW_DISABLED,
     ROOM_EFFECT_VIEW_DISABLED,
     ROOM_EFFECT_VIEW_DISABLED,
     ROOM_EFFECT_VIEW_DISABLED,

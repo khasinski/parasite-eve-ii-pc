@@ -485,14 +485,17 @@ static void _evsExecuteInterpreterTask(Task* task)
 
             case EVENT_SCRIPT_OPCODE_PLAY_WEAPON_ANIMATION:
                 recipientTask = gameGetTaskSlot(work->command->operand0.value);
-                // Resolve the weapon bank in a copy of the borrowed request.
-                animationRequest = *work->command->operand3.animation;
-                if (work->command->operand0.value == GAME_TASK_SLOT_PLAYER) {
-                    playerActorWriteWeaponAnimationBankIndex(&animationRequest.source.index);
-                } else {
-                    companionWriteAnimationBankIndex(&animationRequest.source.index);
-                }
+                // Resolve the weapon bank in a copy of the borrowed request. Without a recipient (a
+                // companion script while no companion is present, companionType 0) there is no bank
+                // to resolve; the original computed one from the entry before the base table and
+                // discarded it.
                 if (recipientTask != NULL) {
+                    animationRequest = *work->command->operand3.animation;
+                    if (work->command->operand0.value == GAME_TASK_SLOT_PLAYER) {
+                        playerActorWriteWeaponAnimationBankIndex(&animationRequest.source.index);
+                    } else {
+                        companionWriteAnimationBankIndex(&animationRequest.source.index);
+                    }
                     TASK_MESSAGE_DISPATCH_POINTER(recipientTask, work->command->operand2.value, &animationRequest, work->command->operand4.value);
                 }
                 break;

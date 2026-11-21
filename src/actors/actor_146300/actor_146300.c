@@ -611,15 +611,14 @@ static AnimationPlayRequest _gActor146300PlayerClip64Request = {
     .enableWorldCollision = ANIMATION_WORLD_COLLISION_DISABLE,
 };
 
-/// Installs the water-tank player clips in the equipped weapon's bank extension.
+/// Installs `_gActor146300PlayerBankExtension` as the player bank's extension ids 47 onward.
 ///
-/// Copies 32 words without starting playback: eighteen clip pointers followed
-/// by fourteen adjacent request words. The playable range is 47..64; the copy
-/// length is the bank capacity, rather than the number of clips. The request
-/// is borrowed through dispatch; the copied clip data must remain loaded.
+/// The original copied 32 words, reading past the list into adjacent package data
+/// that no script plays; the port copies only the list. Dispatch borrows the request;
+/// the copied clips stay borrowed through playback.
 static AnimationBankCopyRequest _gActor146300CopyPlayerBankExtensionRequest = {
     .sets  = _gActor146300PlayerBankExtension,
-    .count = ANIMATION_BANK_EXTENSION_CAPACITY,
+    .count = ARRAY_SIZE(_gActor146300PlayerBankExtension),
 };
 
 /// Player placement at the first animation of the water-tank event.

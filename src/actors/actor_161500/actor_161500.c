@@ -117,7 +117,6 @@ enum {
 enum {
     ACTOR_161500_TALK_BLEND_FRAMES           = 8,
     ACTOR_161500_SOLDIER_REMARK_BLEND_FRAMES = 4,
-    ACTOR_161500_REQUEST_BANK_COPY_WORDS     = 10,
 };
 
 /// Starts the soldier's head aim toward the player during dialogue.
@@ -231,15 +230,14 @@ static AnimationPlayRequest _gActor161500SoldierAnimation11Request = {
     .enableWorldCollision = ANIMATION_WORLD_COLLISION_ENABLE,
 };
 
-/// Installs the talk clips and adjacent raw words into the equipped player bank.
+/// Installs `_gActor161500TalkPlayerAnimationSets` as the player bank's extension ids 47 onward.
 ///
-/// The retained 32-word transfer reads six set pointers, all five request words
-/// of clips 47-51 and the bank-index word of clip 52. Entries after the six
-/// pointers are never played. Keep the source data in this order and the overlay
-/// loaded while copied clip pointers are in use; the count is not an array bound.
+/// The original copied 32 words, reading past the list into adjacent package data
+/// that no script plays; the port copies only the list. Dispatch borrows the request;
+/// the copied clips stay borrowed through playback.
 static AnimationBankCopyRequest _gActor161500TalkPlayerBankCopyRequest = {
     .sets  = _gActor161500TalkPlayerAnimationSets,
-    .count = ANIMATION_BANK_EXTENSION_CAPACITY,
+    .count = ARRAY_SIZE(_gActor161500TalkPlayerAnimationSets),
 };
 
 /// CAP command indices and the placed soldier addressed by dialogue set A.
@@ -992,17 +990,14 @@ static AnimationPlayRequest _gActor161500RequestScenePlayerAnimation52Request = 
     .enableWorldCollision = ANIMATION_WORLD_COLLISION_ENABLE,
 };
 
-/// Installs request-scene clips and four other words into the equipped player bank.
+/// Installs `_gActor161500RequestScenePlayerAnimationSets` as the player bank's extension ids 47 onward.
 ///
-/// The retained ten-word transfer reads six set pointers, NULL, then the first
-/// three words of the neighbouring `_gActor161500UnusedRequestScenePlayerAnimation47Request` play request
-/// (bank index, animation id and blend choice). Those four other entries are
-/// never played. Keep this source order and the overlay loaded while the clip
-/// pointers are in use; the transfer length is neither the table's extent nor
-/// the size of an established aggregate.
+/// The original copied 10 words, reading past the list into adjacent package data
+/// that no script plays; the port copies only the list. Dispatch borrows the request;
+/// the copied clips stay borrowed through playback.
 static AnimationBankCopyRequest _gActor161500RequestScenePlayerBankCopyRequest = {
     .sets  = _gActor161500RequestScenePlayerAnimationSets,
-    .count = ACTOR_161500_REQUEST_BANK_COPY_WORDS,
+    .count = ARRAY_SIZE(_gActor161500RequestScenePlayerAnimationSets),
 };
 
 /// Resets equipped-weapon clip 1 and drops player grid participation on request-scene entry or skip.

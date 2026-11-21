@@ -149,15 +149,15 @@ enum {
 
 /// Player-path clips, extended ids 47..65; 47 is NULL.
 ///
-/// The script copies twenty entries before playback, one past these nineteen:
-/// id 66 receives the following copy request's first word, this list's
-/// address, and is never played. Keep the room clips loaded while the equipped
+/// The script copies them before playback. The original copied twenty entries,
+/// one past these nineteen (id 66 received this list's address and is never
+/// played); the port copies only the list. Keep the room clips loaded while the equipped
 /// bank references them; the skip script only restores a base-bank stance and
 /// does not install the extension.
 static AnimationSet* _gDryfieldWaterTankPlayerPathSets[DRYFIELD_WATER_TANK_PLAYER_EXTENSION_SET_COUNT] = { NULL, &gDryfieldWaterTankAnimation034BC, &gDryfieldWaterTankAnimation0377C, &gDryfieldWaterTankAnimation03A60, &gDryfieldWaterTankAnimation03CB4, &gDryfieldWaterTankAnimation047BC, &gDryfieldWaterTankAnimation04C98, &gDryfieldWaterTankAnimation04FEC, &gDryfieldWaterTankAnimation051E4, &gDryfieldWaterTankAnimation05704, &gDryfieldWaterTankAnimation059E4, &gDryfieldWaterTankAnimation05DB8, &gDryfieldWaterTankAnimation061A8, &gDryfieldWaterTankAnimation06514, &gDryfieldWaterTankAnimation06840, &gDryfieldWaterTankAnimation04000, &gDryfieldWaterTankAnimation04AA0, &gDryfieldWaterTankAnimation06F48, &gDryfieldWaterTankAnimation06C68 };
 
-/// Installs the player-path clips; reads twenty entries from a nineteen-entry list.
-static AnimationBankCopyRequest _gDryfieldWaterTankPlayerAnimationBankCopy = { _gDryfieldWaterTankPlayerPathSets, ARRAY_SIZE(_gDryfieldWaterTankPlayerPathSets) + 1 };
+/// Installs the player-path clips as extended ids 47..65.
+static AnimationBankCopyRequest _gDryfieldWaterTankPlayerAnimationBankCopy = { _gDryfieldWaterTankPlayerPathSets, ARRAY_SIZE(_gDryfieldWaterTankPlayerPathSets) };
 
 /// Equipped-weapon standing clip restored by both player-path scene exits.
 ///

@@ -683,19 +683,19 @@ static AnimationPlayRequest _gActor136300PlayerAnimation72Request = {
     .enableWorldCollision = ANIMATION_WORLD_COLLISION_DISABLE,
 };
 
-/// Installs the garage scene's player bank extension by copying 32 raw words.
+/// Installs `_gActor136300PlayerAnimationSets` as the player bank's extension ids 47 onward.
 ///
-/// Sent before scene clips play; borrows the source through dispatch. The count
-/// includes request words beyond the clip-pointer array, as documented there.
-/// Copied clip pointers remain borrowed while playback uses the loaded package.
-static AnimationBankCopyRequest _gActor136300PlayerAnimationBankCopyRequest = { _gActor136300PlayerAnimationSets, ANIMATION_BANK_EXTENSION_CAPACITY };
+/// The original copied 32 words, reading past the list into adjacent package data
+/// that no script plays; the port copies only the list. Dispatch borrows the request;
+/// the copied clips stay borrowed through playback.
+static AnimationBankCopyRequest _gActor136300PlayerAnimationBankCopyRequest = { _gActor136300PlayerAnimationSets, ARRAY_SIZE(_gActor136300PlayerAnimationSets) };
 
-/// Installs the garage scene's companion bank extension by copying 32 raw words.
+/// Installs `_gActor136300CompanionAnimationSets` as the companion bank's extension ids 47 onward.
 ///
-/// Sent before scene clips play; borrows the source through dispatch. The count
-/// includes request words beyond the clip-pointer array, as documented there.
-/// Copied clip pointers remain borrowed while playback uses the loaded package.
-static AnimationBankCopyRequest _gActor136300CompanionAnimationBankCopyRequest = { _gActor136300CompanionAnimationSets, ANIMATION_BANK_EXTENSION_CAPACITY };
+/// The original copied 32 words, reading past the list into adjacent package data
+/// that no script plays; the port copies only the list. Dispatch borrows the request;
+/// the copied clips stay borrowed through playback.
+static AnimationBankCopyRequest _gActor136300CompanionAnimationBankCopyRequest = { _gActor136300CompanionAnimationSets, ARRAY_SIZE(_gActor136300CompanionAnimationSets) };
 
 /// Player placement at the start of the garage scene's scripted approach.
 ///

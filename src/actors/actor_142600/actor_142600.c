@@ -147,17 +147,19 @@ static AnimationPlayRequest _gActor142600UnusedPlayerAnimation59 = {
     .enableWorldCollision = ANIMATION_WORLD_COLLISION_DISABLE,
 };
 
-/// Installs 32 words from the player's scene table, including its documented overread.
+/// Installs `_gActor142600PlayerAnimationSets` as the player bank's extension ids 47 onward.
 ///
-/// Sent before scene playback; the loaded character/weapon bank must be writable.
-/// The copied scene-set pointers borrow this package for their playback lifetime.
-static AnimationBankCopyRequest _gActor142600PlayerAnimationBankExtensionCopy = { _gActor142600PlayerAnimationSets, ANIMATION_BANK_EXTENSION_CAPACITY };
+/// The original copied 32 words, reading past the list into adjacent package data
+/// that no script plays; the port copies only the list. Dispatch borrows the request;
+/// the copied clips stay borrowed through playback.
+static AnimationBankCopyRequest _gActor142600PlayerAnimationBankExtensionCopy = { _gActor142600PlayerAnimationSets, ARRAY_SIZE(_gActor142600PlayerAnimationSets) };
 
-/// Installs 32 words from the companion's scene table, including its documented overread.
+/// Installs `_gActor142600CompanionAnimationSets` as the companion bank's extension ids 47 onward.
 ///
-/// Sent before scene playback; the loaded companion bank must be writable.
-/// The copied scene-set pointers borrow this package for their playback lifetime.
-static AnimationBankCopyRequest _gActor142600CompanionAnimationBankExtensionCopy = { _gActor142600CompanionAnimationSets, ANIMATION_BANK_EXTENSION_CAPACITY };
+/// The original copied 32 words, reading past the list into adjacent package data
+/// that no script plays; the port copies only the list. Dispatch borrows the request;
+/// the copied clips stay borrowed through playback.
+static AnimationBankCopyRequest _gActor142600CompanionAnimationBankExtensionCopy = { _gActor142600CompanionAnimationSets, ARRAY_SIZE(_gActor142600CompanionAnimationSets) };
 
 /// Player placement for the captioned scene, in room units with yaw 2275/4096 turn.
 static ActorTransform _gActor142600PlayerScenePlacement = { { -5860, 0, 1540, 0 }, { 0, 2275, 0, 0 } };

@@ -506,16 +506,15 @@ static AnimationPlayRequest _gDryfieldNightDrivewayCompanionScenePlayerAnimation
     .enableWorldCollision = ANIMATION_WORLD_COLLISION_ENABLE,
 };
 
-// Stored raw-word transfer length; the clip table itself has four entries.
-enum { DRYFIELD_NIGHT_DRIVEWAY_COMPANION_SCENE_COPY_WORD_COUNT = 10 };
 
-/// Installs ten source words for the companion scenes in the player bank.
+/// Installs `_gDryfieldNightDrivewayCompanionSceneAnimationBankExtension` as the player bank's extension ids 47 onward.
 ///
-/// This is a stored transfer length, including six words after the clip table,
-/// rather than its element count. Dispatch consumes the request synchronously.
+/// The original copied 10 words, reading past the list into adjacent package data
+/// that no script plays; the port copies only the list. Dispatch borrows the request;
+/// the copied clips stay borrowed through playback.
 static AnimationBankCopyRequest _gDryfieldNightDrivewayCompanionSceneAnimationBankCopy = {
     .sets  = _gDryfieldNightDrivewayCompanionSceneAnimationBankExtension,
-    .count = DRYFIELD_NIGHT_DRIVEWAY_COMPANION_SCENE_COPY_WORD_COUNT,
+    .count = ARRAY_SIZE(_gDryfieldNightDrivewayCompanionSceneAnimationBankExtension),
 };
 
 /// Restarts companion clip 1 at the beginning of both companion scenes, without grid participation.

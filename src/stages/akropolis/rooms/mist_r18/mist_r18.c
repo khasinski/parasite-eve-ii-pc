@@ -303,7 +303,8 @@ static void _mistR18CaptionTask(Task* task)
             draw.semiTrans = 0;
             draw.unused_12 = ONE;
 
-            if (stream->chars[stream->cursor - 1] != TEXT_STREAM_END) {
+            // Nothing is revealed yet at cursor 0; the byte before the script is not part of it.
+            if (stream->cursor == 0 || stream->chars[stream->cursor - 1] != TEXT_STREAM_END) {
                 // Glyph bytes directly index the font; line breaks reset the pen.
                 {
                     for (byteIndex = 0; byteIndex < stream->cursor; byteIndex++) {

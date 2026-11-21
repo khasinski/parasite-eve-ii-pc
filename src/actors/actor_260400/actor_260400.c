@@ -368,16 +368,15 @@ static AnimationPlayRequest _gActor260400PlayerClip56AnimationRequest = {
 /// including the adjacent payload records; preserve their order and storage.
 #include "assets/rooms/shelter/1f_heliport/rupert_scene_player_bank.inc"
 
-/// Installs the conversation clips and adjacent words in the player's bank extension.
+/// Installs `_gActor260400PlayerAnimationSets` as the player bank's extension ids 47 onward.
 ///
-/// Copies 32 words, not the ten clip pointers: the remaining 22 are this request,
-/// both base-clip requests, the rest placement and the intro placement's position.
-/// The final two words of the intro placement are outside the copied span.
-/// Only indices 47..49 and 53..56 are played from this extension. The request
-/// and readable source span must remain loaded through synchronous dispatch.
+/// The original copied 32 words, reading past the list into adjacent package data
+/// that no script plays; the port copies only the list. Dispatch borrows the request;
+/// the copied clips stay borrowed through playback.
+/// Only ids 47..49 and 53..56 are played from this extension.
 static AnimationBankCopyRequest _gActor260400PlayerAnimationBankCopyRequest = {
     .sets  = _gActor260400PlayerAnimationSets,
-    .count = ANIMATION_BANK_EXTENSION_CAPACITY,
+    .count = ARRAY_SIZE(_gActor260400PlayerAnimationSets),
 };
 
 /// Restarts the player bank's base clip 1 on conversation entry, completion or skip.

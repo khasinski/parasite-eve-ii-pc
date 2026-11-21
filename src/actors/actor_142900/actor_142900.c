@@ -375,24 +375,24 @@ static AnimationPlayRequest _gActor142900PlayerPlayAnimation56 = {
     .enableWorldCollision = ANIMATION_WORLD_COLLISION_ENABLE,
 };
 
-/// Copies 32 raw words from the player scene table into its current weapon bank extension.
+/// Installs `_gActor142900PlayerAnimationBankExtension` as the player bank's extension ids 47 onward.
 ///
-/// The source span includes the adjacent request words described at the table.
-/// Dispatch borrows this request and source; copied clips remain borrowed for
-/// playback. The destination bank must be loaded and writable.
+/// The original copied 32 words, reading past the list into adjacent package data
+/// that no script plays; the port copies only the list. Dispatch borrows the request;
+/// the copied clips stay borrowed through playback.
 static AnimationBankCopyRequest _gActor142900PlayerAnimationBankCopyRequest = {
     .sets  = _gActor142900PlayerAnimationBankExtension,
-    .count = ANIMATION_BANK_EXTENSION_CAPACITY,
+    .count = ARRAY_SIZE(_gActor142900PlayerAnimationBankExtension),
 };
 
-/// Copies 32 raw words from the companion scene table into its selected companion bank extension.
+/// Installs `_gActor142900CompanionAnimationBankExtension` as the companion bank's extension ids 47 onward.
 ///
-/// The source span includes the adjacent request words described at the table.
-/// Dispatch borrows this request and source; copied clips remain borrowed for
-/// playback. The destination bank must be loaded and writable.
+/// The original copied 32 words, reading past the list into adjacent package data
+/// that no script plays; the port copies only the list. Dispatch borrows the request;
+/// the copied clips stay borrowed through playback.
 static AnimationBankCopyRequest _gActor142900CompanionAnimationBankCopyRequest = {
     .sets  = _gActor142900CompanionAnimationBankExtension,
-    .count = ANIMATION_BANK_EXTENSION_CAPACITY,
+    .count = ARRAY_SIZE(_gActor142900CompanionAnimationBankExtension),
 };
 
 /// Player placement for elevator scene setup and skipped-scene restoration.

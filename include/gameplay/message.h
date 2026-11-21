@@ -380,15 +380,17 @@ STATIC_ASSERT_SIZEOF(AnimationPlayRequest, 0x14);
 /// Counts above `ANIMATION_BANK_EXTENSION_CAPACITY` return 1 without copying;
 /// nonpositive counts copy nothing and return 0. Other accepted counts return 0.
 ///
-/// Most scenes ask for the whole extension (`ANIMATION_BANK_EXTENSION_CAPACITY`)
-/// with a shorter list, so the copy reads past the list's end into whatever
-/// follows it in the package, and the bank's later extension entries receive
-/// those words. A scene plays only the ids its list fills; each such list states
-/// its overrun. The request and list are borrowed through synchronous dispatch;
-/// copied clips must remain loaded while playback uses them.
+/// In the original, most scenes asked for the whole extension
+/// (`ANIMATION_BANK_EXTENSION_CAPACITY`) or another fixed word count with a
+/// shorter list, so the copy read past the list into whatever followed it in the
+/// package (the lists' notes describe those words). A scene plays only the ids
+/// its list fills, and the port's host layout does not keep that adjacency, so
+/// every request's count is its list's `ARRAY_SIZE`; the receiver cannot check
+/// it. The request and list are borrowed through synchronous dispatch; copied
+/// clips must remain loaded while playback uses them.
 typedef struct AnimationBankCopyRequest {
     struct AnimationSet* const* sets;  // Borrowed clips for bank ids 47 onward
-    s32                         count; // Entries to copy (1..32; nonpositive copies none); may exceed the list's length
+    s32                         count; // Entries to copy (1..32; nonpositive copies none); must not exceed the list's length
 } AnimationBankCopyRequest;
 STATIC_ASSERT_SIZEOF(AnimationBankCopyRequest, 8);
 

@@ -827,22 +827,20 @@ static const AnimationPlayRequest _gDryfieldTrailerCoachPlayerClip63ResetRequest
 
 /// Seventeen player extension slots for clip ids 47..63, borrowed from this room and Gary's actor package.
 ///
-/// Slots for ids 55..57 are NULL. The copy request transfers 32 words: it reads
-/// 15 words past this table through the following copy request, three labels,
-/// their alignment bytes and the first topic-choice pointer. This is retained
-/// original behavior; those extra words are not playable animation sets.
+/// Slots for ids 55..57 are NULL. The original copy request transferred 32 words,
+/// reading 15 words past this table (the following copy request, three labels,
+/// their alignment bytes and the first topic-choice pointer); those words are not
+/// playable sets, and the port copies only this table.
 /// Both overlays must remain loaded while the installed clip pointers are used.
 static AnimationSet* const _gDryfieldTrailerCoachPlayerAnimationExtensionSets[17] SECTION(".data") = { &gDryfieldTrailerCoachPlayerEvent47Clip, &gDryfieldTrailerCoachPlayerEvent48Clip, &gDryfieldTrailerCoachPlayerEvent49Clip, &gDryfieldTrailerCoachPlayerEvent50Clip, &gDryfieldTrailerCoachPlayerConversationClip, &gDryfieldTrailerCoachPlayerEvent52Clip, &gDryfieldTrailerCoachPlayerEvent53Clip, &gDryfieldTrailerCoachPlayerEvent54Clip, NULL, NULL, NULL, &gDryfieldTrailerCoachPlayerEvent58Clip, &gDryfieldTrailerCoachPlayerEvent59Clip, &gDryfieldTrailerCoachPlayerEvent60Clip, &gDryfieldTrailerCoachPlayerEvent61Clip, &_gDryfieldTrailerCoachAnimation07994, &_gDryfieldTrailerCoachAnimation07668 };
 
-/// Copies 32 source words into the equipped player's extension slots starting at 47.
+/// Copies the seventeen table slots into the equipped player's extension slots starting at 47.
 ///
-/// The count is the destination capacity, not the seventeen playable source slots.
 /// The request is borrowed synchronously; the copied animation pointers remain
-/// borrowed for playback. See `_gDryfieldTrailerCoachPlayerAnimationExtensionSets`
-/// for the retained read across adjacent objects.
+/// borrowed for playback (see `_gDryfieldTrailerCoachPlayerAnimationExtensionSets`).
 static const AnimationBankCopyRequest _gDryfieldTrailerCoachPlayerAnimationExtensionCopyRequest SECTION(".data") = {
     .sets  = _gDryfieldTrailerCoachPlayerAnimationExtensionSets,
-    .count = ANIMATION_BANK_EXTENSION_CAPACITY,
+    .count = ARRAY_SIZE(_gDryfieldTrailerCoachPlayerAnimationExtensionSets),
 };
 
 /// Null-terminated Shift-JIS topic label "銃器について (About firearms)".

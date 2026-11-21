@@ -170,11 +170,19 @@ TaskDesc gActor450900Tasks[ACTOR_450900_TASK_COUNT] = {
 /// the installed animations are finished.
 #include "assets/rooms/shelter/b6_growth_room/companion_bank.inc"
 
-/// Installs the companion's six clips and adjacent words into its 32-word bank extension.
-static AnimationBankCopyRequest _gActor450900CompanionAnimationBankCopy = { _gActor450900CompanionAnimationSets, ANIMATION_BANK_EXTENSION_CAPACITY };
+/// Installs `_gActor450900CompanionAnimationSets` as the companion bank's extension ids 47 onward.
+///
+/// The original copied 32 words, reading past the list into adjacent package data
+/// that no script plays; the port copies only the list. Dispatch borrows the request;
+/// the copied clips stay borrowed through playback.
+static AnimationBankCopyRequest _gActor450900CompanionAnimationBankCopy = { _gActor450900CompanionAnimationSets, ARRAY_SIZE(_gActor450900CompanionAnimationSets) };
 
-/// Installs the player's ten clips and adjacent words into its 32-word bank extension.
-static AnimationBankCopyRequest _gActor450900PlayerAnimationBankCopy = { _gActor450900PlayerAnimationSets, ANIMATION_BANK_EXTENSION_CAPACITY };
+/// Installs `_gActor450900PlayerAnimationSets` as the player bank's extension ids 47 onward.
+///
+/// The original copied 32 words, reading past the list into adjacent package data
+/// that no script plays; the port copies only the list. Dispatch borrows the request;
+/// the copied clips stay borrowed through playback.
+static AnimationBankCopyRequest _gActor450900PlayerAnimationBankCopy = { _gActor450900PlayerAnimationSets, ARRAY_SIZE(_gActor450900PlayerAnimationSets) };
 
 /// Unplayed clip-47 reset preset at the start of the companion request run.
 ///

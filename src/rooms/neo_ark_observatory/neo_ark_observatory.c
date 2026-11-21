@@ -199,12 +199,12 @@ static TaskMessageEntry _gNeoArkObservatoryRoomMessages[5] = {
 /// script words are not clips. The room overlay owns the borrowed clip data.
 static AnimationSet* _gNeoArkObservatoryScenePlayerAnimationSets[1] = { &_gNeoArkObservatoryAnimation03BC4 };
 
-/// Installs the scene's player clip and adjacent raw words into the 32-word bank extension.
+/// Installs `_gNeoArkObservatoryScenePlayerAnimationSets` as the player bank's extension ids 47 onward.
 ///
-/// The count is the bank capacity, not the playable set count. The source span
-/// continues through the next play request and four scene commands; the player
-/// consumes the request synchronously and borrows the clip through playback.
-static AnimationBankCopyRequest _gNeoArkObservatoryScenePlayerAnimationBankCopyRequest = { _gNeoArkObservatoryScenePlayerAnimationSets, ANIMATION_BANK_EXTENSION_CAPACITY };
+/// The original copied 32 words, reading past the list into adjacent package data
+/// that no script plays; the port copies only the list. Dispatch borrows the request;
+/// the copied clips stay borrowed through playback.
+static AnimationBankCopyRequest _gNeoArkObservatoryScenePlayerAnimationBankCopyRequest = { _gNeoArkObservatoryScenePlayerAnimationSets, ARRAY_SIZE(_gNeoArkObservatoryScenePlayerAnimationSets) };
 
 /// Blends the player into scene clip 47 over 15 frames with world collision enabled.
 ///

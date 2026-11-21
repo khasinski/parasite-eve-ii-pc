@@ -138,8 +138,8 @@ static TaskMessageEntry _gActor341700PropMessages[4] = {
 /// World-space sprite offsets, in game units, for the prop's jolts and rise.
 ///
 /// Jolt bursts select entries 35, 8, 25, 24 and 26. The frame schedule supplies
-/// other indices; zero ends a schedule row. Its late-rise reads extend into
-/// adjacent storage, whose interpretation as additional vectors is unproven.
+/// other indices; zero ends a schedule row. A few late-rise indices exceed this
+/// table; see `_actor341700PropSpriteOffset`.
 static SVECTOR _gActor341700PropSpriteOffsets[48] = {
     { 0, 0, 0, 0 },
     { 0, -2500, 3000, 0 },
@@ -195,9 +195,35 @@ static SVECTOR _gActor341700PropSpriteOffsets[48] = {
 ///
 /// Row 0 corresponds to frame 120; only rows 0..120 (frames 120..240) are used.
 /// All 150 rows are retained. Rows 104, 106 and 109 select 50, 58 and 52 beyond
-/// the 48-vector offset table; the meaning of those adjacent reads is unproven.
+/// the 48-vector offset table (`_actor341700PropSpriteOffset`).
 static u8 _gActor341700PropSpriteSchedule[150][4];
 PE_ASSET_BIND("actor_341700_motion_142DC", _gActor341700PropSpriteSchedule);
+
+/// Returns rise sprite offset `index`.
+///
+/// In the package the offset table (0x1415C) ends where the frame schedule
+/// (0x142DC) begins, so the original read indices past the table's 48 vectors
+/// from the schedule's bytes, as little-endian halfwords. Those words are
+/// rebuilt here from the loaded schedule instead of reading past the host table.
+/// Indices beyond the schedule as well (none are scheduled) give a zero offset.
+static inline SVECTOR _actor341700PropSpriteOffset(u32 index)
+{
+    enum { OFFSET_COUNT = ARRAY_SIZE(_gActor341700PropSpriteOffsets), VECTOR_BYTES = 8 };
+    const u8* bytes;
+    SVECTOR   offset = { 0, 0, 0, 0 };
+
+    if (index < OFFSET_COUNT) {
+        return _gActor341700PropSpriteOffsets[index];
+    }
+    if ((index - OFFSET_COUNT + 1) * VECTOR_BYTES <= sizeof(_gActor341700PropSpriteSchedule)) {
+        bytes     = &_gActor341700PropSpriteSchedule[0][0] + (index - OFFSET_COUNT) * VECTOR_BYTES;
+        offset.vx = (s16)(bytes[0] | (bytes[1] << 8));
+        offset.vy = (s16)(bytes[2] | (bytes[3] << 8));
+        offset.vz = (s16)(bytes[4] | (bytes[5] << 8));
+        offset.pad = (s16)(bytes[6] | (bytes[7] << 8));
+    }
+    return offset;
+}
 
 TaskDesc gActor341700PropTaskDesc = { { { (TASK_BODY_TMD | TASK_DESC_SKIP_AUTO_MODEL_BUFFER), TASK_PRIORITY_ACTOR } }, _actor341700PropTask, { .model = &_gActor341700Model13558 } };
 
@@ -368,7 +394,7 @@ static void _actor341700PropRiseState(Enemy* enemy, Task* task)
         if (_gActor341700PropSpriteSchedule[work->stateFrame - ACTOR_341700_PROP_SPRITE_FIRST_FRAME][spriteSlot] == ACTOR_341700_PROP_SPRITE_ROW_END) {
             return;
         }
-        spriteOffset    = _gActor341700PropSpriteOffsets[_gActor341700PropSpriteSchedule[work->stateFrame - ACTOR_341700_PROP_SPRITE_FIRST_FRAME][spriteSlot]];
+        spriteOffset    = _actor341700PropSpriteOffset(_gActor341700PropSpriteSchedule[work->stateFrame - ACTOR_341700_PROP_SPRITE_FIRST_FRAME][spriteSlot]);
         nextRandomState = RANDOM_LCG_NEXT(gRandomLcgState);
         randomByte      = (nextRandomState >> 16) & 0xFF;
         jitter          = randomByte;

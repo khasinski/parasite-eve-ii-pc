@@ -69,7 +69,6 @@ enum {
     NEO_ARK_POWER_PLANT_1_GENERATOR_CLEAR_CAP           = 1,
     NEO_ARK_POWER_PLANT_1_BATTLE_ENTRY_CAP              = 4,
     NEO_ARK_POWER_PLANT_1_BATTLE_ENTRY_RATE             = ANIMATION_RATE_ONE / 2,
-    NEO_ARK_POWER_PLANT_1_EXTENSION_COPY_WORDS          = 2,
 };
 
 /// Segment indices and the restart step of the generator-clear vibration script.
@@ -235,13 +234,14 @@ static AnimationSet* _gNeoArkPowerPlant1PlayerAnimationBankExtension[1] = {
     &_gNeoArkPowerPlant1Animation01530,
 };
 
-/// Installs the battle-entry clip and the adjacent source-address word in the player bank.
+/// Installs `_gNeoArkPowerPlant1PlayerAnimationBankExtension` as the player bank's extension ids 47 onward.
 ///
-/// The retained two-word count reads one word beyond the one-entry source table;
-/// the count word itself is outside the copy. Both records belong to this room.
+/// The original copied 2 words, reading past the list into adjacent package data
+/// that no script plays; the port copies only the list. Dispatch borrows the request;
+/// the copied clips stay borrowed through playback.
 static AnimationBankCopyRequest _gNeoArkPowerPlant1PlayerAnimationBankCopyRequest = {
     .sets  = _gNeoArkPowerPlant1PlayerAnimationBankExtension,
-    .count = NEO_ARK_POWER_PLANT_1_EXTENSION_COPY_WORDS,
+    .count = ARRAY_SIZE(_gNeoArkPowerPlant1PlayerAnimationBankExtension),
 };
 
 /// Player's battle-entry placement in whole room coordinates, with zero Euler angles.

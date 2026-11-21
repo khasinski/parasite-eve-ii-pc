@@ -117,8 +117,12 @@ static AnimationPlayRequest _gActor143000PlayerCaptionReleaseRequest = { { .inde
 /// Clip 51 ten-frame blend near completion-scene end. Disables world collision.
 static AnimationPlayRequest _gActor143000PlayerCompletion51Request = { { .index = 1 }, ACTOR_143000_PLAYER_COMPLETION_CLIP_51, ANIMATION_BLEND_INTERPOLATE, ACTOR_143000_PLAYER_CUE_BLEND_FRAMES, ANIMATION_WORLD_COLLISION_DISABLE };
 
-/// Installs the terminal clips as extended ids 47..51; reads 32 entries from a five-clip list.
-static AnimationBankCopyRequest _gActor143000PlayerAnimationBankCopy = { _gActor143000PlayerSceneSets, ANIMATION_BANK_EXTENSION_CAPACITY };
+/// Installs `_gActor143000PlayerSceneSets` as the player bank's extension ids 47 onward.
+///
+/// The original copied 32 words, reading past the list into adjacent package data
+/// that no script plays; the port copies only the list. Dispatch borrows the request;
+/// the copied clips stay borrowed through playback.
+static AnimationBankCopyRequest _gActor143000PlayerAnimationBankCopy = { _gActor143000PlayerSceneSets, ARRAY_SIZE(_gActor143000PlayerSceneSets) };
 
 /// Player placement at the laboratory terminal: world XYZ (3270,0,-1630), yaw zero.
 static ActorTransform _gActor143000TerminalPlayerPlacement = { { 3270, 0, -1630, 0 }, { 0, 0, 0, 0 } };

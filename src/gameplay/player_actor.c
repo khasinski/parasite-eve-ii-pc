@@ -7725,8 +7725,8 @@ s32 playerActorSetAnimationRate(Task* task, s32 unusedMessageId, s32 rate, s32 u
 /// counts overwrite entries 47 onward and return 0. The borrowed request and
 /// its list must remain valid through this call; the count is reread each
 /// iteration and must remain within the checked capacity. Copied clips remain
-/// borrowed for playback; a count past the list's end copies whatever follows
-/// it (`AnimationBankCopyRequest`). Receiver, message ID and second payload are
+/// borrowed for playback; the count must not exceed the list's length
+/// (`AnimationBankCopyRequest`). Receiver, message ID and second payload are
 /// unused.
 static s32 _animationCopyPlayerBankExtension(Task* unusedTask, s32 unusedMessageId, const AnimationBankCopyRequest* request, s32 unusedSecondArg)
 {

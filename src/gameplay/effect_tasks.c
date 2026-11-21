@@ -1890,6 +1890,7 @@ void effectControlTask6E(Task* task)
         EFFECT_RELOAD_LONG_SPARK_ARG     = (3 << 16) | EFFECT_MUZZLE_SPARK_RANDOM_DRIFT | 512,
         EFFECT_RELOAD_DURATION_GATE_MASK = 0xF0000,
         EFFECT_RELOAD_DEFAULT_TICKS      = 12,
+        EFFECT_RELOAD_RELEASE            = EFFECT_DRAW_TASK_ACTIVE + 1,
     };
     EffectWork* work;
     GfxCoord*   ejectionCoord;
@@ -1897,6 +1898,10 @@ void effectControlTask6E(Task* task)
 
     ejectionCoord = task->extra.coordBody->coord;
     work          = task->spawnArg2.pointer;
+    if (task->state == EFFECT_RELOAD_RELEASE) {
+        effectKillTask(work, task);
+        return;
+    }
     if (task->state == EFFECT_DRAW_TASK_NEW) {
         if (task->spawnArg1.value & EFFECT_RELOAD_DURATION_GATE_MASK) {
             work->scale = (u32)task->spawnArg1.value >> 16;
@@ -1921,7 +1926,10 @@ void effectControlTask6E(Task* task)
     effectSpawn(EFFECT_091, ejectionCoord, task->spawnArg1.value, 0);
     work->age++;
     if (work->age > work->scale - 1) {
-        effectKillTask(work, task);
+        // Each piece orients its launch from this coordinate on its first update, which can come after
+        // this one. The original died here and the last piece read the freed coordinate (still intact on
+        // the PS1); stay alive one more update, spawning nothing, so it reads live data.
+        task->state = EFFECT_RELOAD_RELEASE;
     }
 }
 

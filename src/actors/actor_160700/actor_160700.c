@@ -81,8 +81,12 @@ enum {
 /// The clips stay loaded during playback.
 #include "assets/rooms/shelter/b1_golem_freezer_1/player_meeting_bank.inc"
 
-/// Installs the meeting clips; reads 32 entries from a 23-entry list.
-static AnimationBankCopyRequest _gActor160700PlayerMeetingBankCopy = { _gActor160700PlayerMeetingSets, ANIMATION_BANK_EXTENSION_CAPACITY };
+/// Installs `_gActor160700PlayerMeetingSets` as the player bank's extension ids 47 onward.
+///
+/// The original copied 32 words, reading past the list into adjacent package data
+/// that no script plays; the port copies only the list. Dispatch borrows the request;
+/// the copied clips stay borrowed through playback.
+static AnimationBankCopyRequest _gActor160700PlayerMeetingBankCopy = { _gActor160700PlayerMeetingSets, ARRAY_SIZE(_gActor160700PlayerMeetingSets) };
 
 /// Restarts base clip 1; disables world-grid participation.
 static AnimationPlayRequest _gActor160700PlayerMeetingResetRequest = { { .index = ACTOR_160700_REQUEST_BANK_INDEX }, ACTOR_160700_PLAYER_BASE_CLIP, ANIMATION_BLEND_RESET, 0, ANIMATION_WORLD_COLLISION_DISABLE };

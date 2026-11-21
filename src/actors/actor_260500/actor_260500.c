@@ -287,14 +287,14 @@ static const AnimationPlayRequest _gActor260500PlayerClip56Request SECTION(".dat
 /// and the XYZ words of the next placement. Only these ten words are clip entries.
 #include "assets/rooms/shelter/1f_heliport/jodie_scene_player_bank.inc"
 
-/// Copies the heliport player's extension as 32 raw words beginning at the clip table.
+/// Installs `_gActor260500PlayerAnimationExtensionSets` as the player bank's extension ids 47 onward.
 ///
-/// Sent before each conversation. The count is the extension capacity, including
-/// neighboring non-clip records; it is intentionally not the ten-table-entry count.
-/// The loaded source span and writable equipped weapon bank must survive dispatch.
-/// Only IDs 47..50 and 53..56 in that copied span are subsequently played as clips.
+/// The original copied 32 words, reading past the list into adjacent package data
+/// that no script plays; the port copies only the list. Dispatch borrows the request;
+/// the copied clips stay borrowed through playback.
+/// Only ids 47..50 and 53..56 are played from this extension.
 static AnimationBankCopyRequest _gActor260500PlayerAnimationExtensionCopyRequest = {
-    _gActor260500PlayerAnimationExtensionSets, ANIMATION_BANK_EXTENSION_CAPACITY
+    _gActor260500PlayerAnimationExtensionSets, ARRAY_SIZE(_gActor260500PlayerAnimationExtensionSets)
 };
 
 /// Restarts player base-bank clip 1 on opening-conversation entry, completion or skip.

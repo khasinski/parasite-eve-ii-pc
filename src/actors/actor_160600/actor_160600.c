@@ -52,7 +52,6 @@ static AnimationSet _gShelterB1SterilizationRoomCompanionBarkClip;
 #include "assets/rooms/shelter/b1_sterilization_room/soldier_clips_1.inc"
 
 enum {
-    ACTOR_160600_COMPANION_EXTENSION_COPY_WORDS = 10,
     ACTOR_160600_PLAYER_UNARMED_WALK_CLIP       = 19,
     ACTOR_160600_PLAYER_OPENING_ARRIVAL_CLIP    = ANIMATION_BANK_BASE_SET_COUNT,
 };
@@ -388,22 +387,25 @@ static AnimationPlayRequest _gActor160600CompanionAnimation49Request = {
 /// and keep this package loaded while the companion's extended clips are used.
 #include "assets/rooms/shelter/b1_sterilization_room/companion_extension_bank.inc"
 
-/// Installs the companion's three scene clips and seven following non-clip words.
+/// Installs `_gActor160600CompanionExtensionSets` as the companion bank's extension ids 47 onward.
 ///
-/// The ten-word source span includes both copy requests and the next placement's
-/// XYZ. The count describes this raw transfer, rather than the clip-table length.
+/// The original copied 10 words, reading past the list into adjacent package data
+/// that no script plays; the port copies only the list. Dispatch borrows the request;
+/// the copied clips stay borrowed through playback.
 static AnimationBankCopyRequest _gActor160600CompanionExtensionCopyRequest = {
     .sets  = _gActor160600CompanionExtensionSets,
-    .count = ACTOR_160600_COMPANION_EXTENSION_COPY_WORDS,
+    .count = ARRAY_SIZE(_gActor160600CompanionExtensionSets),
 };
 
-/// Installs the player's scene clips and fills the rest of its extension with raw words.
+/// Installs `_gActor160600PlayerExtensionSets` as the player bank's extension ids 47 onward.
 ///
-/// All 32 words are copied, including the 17 request words following the clip
-/// table. Scene playback selects only valid pointers in indices 47..61.
+/// The original copied 32 words, reading past the list into adjacent package data
+/// that no script plays; the port copies only the list. Dispatch borrows the request;
+/// the copied clips stay borrowed through playback.
+/// Scene playback selects only valid pointers in ids 47..61.
 static AnimationBankCopyRequest _gActor160600PlayerExtensionCopyRequest = {
     .sets  = _gActor160600PlayerExtensionSets,
-    .count = ANIMATION_BANK_EXTENSION_CAPACITY,
+    .count = ARRAY_SIZE(_gActor160600PlayerExtensionSets),
 };
 
 /// Companion placement before the opening scene run.
