@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Fix frozen afterimages in camera effects that blend the previous frame (the cafeteria boss death, No.9's helipad scenes): the GPU renderer now sets the PS1 mask bit, so damage readout boxes no longer stay on screen without their digits and models no longer smear over captions. Reproduced on the hidden-Metal renderer with a deterministic route; the helipad caption and Rupert screenshots match the same pattern but those exact scenes were not reached.
+- Fix the inventory panel flickering through the scene on GPU renderers: the attachment list and its Exchange/Load/Discard menu, hidden behind the item list with an empty draw area, drew without a background on every other frame.
+- Write a crash report (`parasite-eve-ii-crash-<start time>.log`, plus a minidump on Windows) next to the log when the game crashes: version, system, fault, location, disc, frame counters, backtrace and the end of the log. The next start names the report. Windows and Linux crash handling has not been run on a real crash yet.
+- Save editor: show items, key items, weapons and ammo, location, play time, mode, story chapter, Parasite Energy, visited rooms and named game flags by name; add and remove items and key items by name. Fix GUI EXP/BP edits not reaching the player record the game loads.
+- Fix out-of-bounds reads and a use-after-free in rooms of Dryfield, the Shelter, Neo Ark and the Akropolis (animation-bank copies, view-effect and lamp tables, reload debris, companion scripts, Glutton models), found by starting a game at every warp under AddressSanitizer.
+- Reject development start/warp locations outside the area's tables instead of crashing; make recorded input replays deterministic by default.
+
 ## 0.3.6
 
 - Prevent off-camera targeting reticles from wrapping across the GPU's signed coordinate boundary and stretching their green/yellow texture across the screen. Reproduced in the first Akropolis SWAT encounter; target lock and off-screen attacks remain enabled.
