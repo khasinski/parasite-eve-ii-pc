@@ -50,19 +50,27 @@ static int checkBuffer(int buffer)
     /* One OT, drawn from its highest tag down, as the UI submits it: a full
      * area and visible tile, the hidden-panel area with content queued under
      * it, then the full-screen restore and another visible tile. */
-    DR_AREA full, hidden, restore;
-    TILE before, hiddenCorner, hiddenRow, after;
-    queueArea(&full, 0, top, SCREEN_W, SCREEN_H);
-    queueTile(&before, 8, top + 8, TILE_SIZE, TILE_SIZE, 255, 0, 0);
-    queueArea(&hidden, 0, top, 0, 0);
-    queueTile(&hiddenCorner, 0, top, 4, 4, 0, 255, 0);
-    queueTile(&hiddenRow, 40, top + 8, 96, TILE_SIZE, 0, 255, 0);
-    queueArea(&restore, 0, top, SCREEN_W, SCREEN_H);
-    queueTile(&after, 160, top + 8, TILE_SIZE, TILE_SIZE, 0, 0, 255);
+    /* Each primitive lives in a slot large enough for the P_TAG view addPrim
+     * takes of it (the game's primitives sit in one arena), so UBSan accepts it. */
+    static union { DR_AREA area; TILE tile; P_TAG tag; } slots[7];
+    DR_AREA* const full = &slots[0].area;
+    TILE* const before = &slots[1].tile;
+    DR_AREA* const hidden = &slots[2].area;
+    TILE* const hiddenCorner = &slots[3].tile;
+    TILE* const hiddenRow = &slots[4].tile;
+    DR_AREA* const restore = &slots[5].area;
+    TILE* const after = &slots[6].tile;
+    queueArea(full, 0, top, SCREEN_W, SCREEN_H);
+    queueTile(before, 8, top + 8, TILE_SIZE, TILE_SIZE, 255, 0, 0);
+    queueArea(hidden, 0, top, 0, 0);
+    queueTile(hiddenCorner, 0, top, 4, 4, 0, 255, 0);
+    queueTile(hiddenRow, 40, top + 8, 96, TILE_SIZE, 0, 255, 0);
+    queueArea(restore, 0, top, SCREEN_W, SCREEN_H);
+    queueTile(after, 160, top + 8, TILE_SIZE, TILE_SIZE, 0, 0, 255);
 
-    void* chain[] = { &full, &before, &hidden, &hiddenCorner, &hiddenRow, &restore, &after };
+    void* chain[] = { full, before, hidden, hiddenCorner, hiddenRow, restore, after };
     enum { COUNT = sizeof chain / sizeof chain[0] };
-    OT_TYPE ot[COUNT];
+    OT_TYPE ot[COUNT + 4]; /* spare entries: addPrim reads each tag through the larger P_TAG */
     ClearOTagR(ot, COUNT);
     for (int i = 0; i < COUNT; ++i) addPrim(&ot[COUNT - 1 - i], chain[i]);
     DrawOTag(&ot[COUNT - 1]); DrawSync(0);

@@ -683,15 +683,22 @@ static int overflowStack(volatile int depth) {
     return overflowStack(depth + 1) + pad[0] + pad[sizeof pad - 1];
 }
 
+/* The deliberate invalid write must reach the signal handler; UBSan would stop it first. */
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((no_sanitize("undefined")))
+#endif
+static void writeNowhere(void) {
+    volatile int* volatile nowhere = NULL;
+    *nowhere = 1;
+}
+
 void peCrashTestTrigger(void) {
     const char* mode = getenv("PE2_TEST_CRASH");
     if (!mode || !*mode) return;
     fprintf(stderr, "[crash] PE2_TEST_CRASH=%s: crashing on purpose\n", mode);
     fflush(stderr);
-    if (!strcmp(mode, "segv")) {
-        volatile int* volatile nowhere = NULL;
-        *nowhere = 1;
-    } else if (!strcmp(mode, "abort")) abort();
+    if (!strcmp(mode, "segv")) writeNowhere();
+    else if (!strcmp(mode, "abort")) abort();
     else if (!strcmp(mode, "stack")) crashSink = overflowStack(0);
     else if (!strcmp(mode, "fpe")) {
 #ifdef _WIN32

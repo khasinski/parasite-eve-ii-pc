@@ -100,8 +100,12 @@ int main(void)
      * so the next feedback pass blends it away instead of copying it forever. */
     CHECK(pixel(72, LOWER_Y + 8) == (BLUE | MASK));
     CHECK(pixel(72 + SIZE - 1, LOWER_Y + 8 + SIZE - 1) == (BLUE | MASK));
-    /* The marked scene texel averages with the (black) destination. */
-    CHECK((pixel(8, LOWER_Y + 8) & 0x7fff) == (RED >> 1 & 0x1f));
+    /* The marked scene texel averages with the (black) destination: 31/2 is
+     * 15 on PS1, the software rasterizer and SDL_GPU; the OpenGL backend's
+     * fixed-function blend into RGBA8 rounds the half up to 16. Either way it
+     * is blended, not copied (31). */
+    const u_short averaged = pixel(8, LOWER_Y + 8) & 0x7fff;
+    CHECK(averaged == (RED >> 1 & 0x1f) || averaged == ((RED >> 1) + 1 & 0x1f));
     CHECK((pixel(8, LOWER_Y + 8) & MASK) != 0);
     /* Fully transparent texels (0x0000) are not drawn and leave the mask alone. */
     CHECK(pixel(120, LOWER_Y + 30) == 0);
