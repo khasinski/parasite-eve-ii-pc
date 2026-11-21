@@ -3,11 +3,6 @@
 #include "port/host_ui.h"
 #include <stdio.h>
 #include <stdlib.h>
-#ifndef _WIN32
-#include <signal.h>
-#include <execinfo.h>
-#include <unistd.h>
-#endif
 #include <psyz.h>
 #include <psyz/cd.h>
 #include <psyz/video.h>
@@ -15,46 +10,41 @@
 #include <libetc.h>
 #include "gamemain.h"
 
-/* Crash report: where it faulted and the call chain (also the link register, since a call through a
- * NULL function pointer leaves no frame of its own). */
+#include "port/crash_report.h"
+#include "main/gamemain.h"
+#include "main/mc.h"
+#include "main/display.h"
+
+#ifndef PE2_VERSION
+#define PE2_VERSION "unknown"
+#endif
+
+/* Crash report (src/port/crash_report.c): the game state it records. The task callback is the last one the task
+ * walk dispatched, since a call through a NULL function pointer leaves no frame of its own. */
 extern void* gHostCurrentTaskCallback;
-#ifndef _WIN32
-static void crashHandler(int sig, siginfo_t* info, void* ctx)
+extern int pePadTickCount;
+static void installCrashReporter(void)
 {
-    void* frames[32];
-    int count;
-#if defined(__APPLE__) && defined(__arm64__)
-    ucontext_t* uc = ctx;
-    fprintf(stderr, "\nCRASH signal %d addr=%p pc=%p lr=%p\n", sig, info->si_addr,
-            (void*)uc->uc_mcontext->__ss.__pc, (void*)uc->uc_mcontext->__ss.__lr);
-    frames[0] = (void*)uc->uc_mcontext->__ss.__lr;
-    fprintf(stderr, "last task callback:\n");
-    {
-        void* cb[1] = { gHostCurrentTaskCallback };
-        backtrace_symbols_fd(cb, 1, 2);
-    }
-    count = backtrace(frames + 1, 30) + 1;
-#else
-    (void)ctx;
-    fprintf(stderr, "\nCRASH signal %d addr=%p\n", sig, info->si_addr);
-    count = backtrace(frames, 32);
-#endif
-    backtrace_symbols_fd(frames, count, 2);
-    _exit(128 + sig);
+    peCrashInstall(PE2_VERSION);
+    GameLocationKey* location = &gMcSaveData[MEMORY_CARD_SAVE_LIVE].state.location;
+    peCrashWatch("stage", &location->stage, 1, PE_CRASH_WATCH_UNSIGNED);
+    peCrashWatch("area", &location->area, 1, PE_CRASH_WATCH_UNSIGNED);
+    peCrashWatch("view", &location->view, 1, PE_CRASH_WATCH_UNSIGNED);
+    peCrashWatch("room state", &location->roomState, 1, PE_CRASH_WATCH_UNSIGNED);
+    peCrashWatch("warp", &location->warp, 1, PE_CRASH_WATCH_UNSIGNED);
+    peCrashWatch("variant", &location->variant, 1, PE_CRASH_WATCH_UNSIGNED);
+    peCrashWatch("disc (0 unknown)", &gGameMainPersistentState.discNumber, 1, PE_CRASH_WATCH_UNSIGNED);
+    peCrashWatch("pad tick", &pePadTickCount, sizeof pePadTickCount, PE_CRASH_WATCH_SIGNED);
+    peCrashWatch("game frame", &gDisplayState.frameCount, sizeof gDisplayState.frameCount, PE_CRASH_WATCH_SIGNED);
+    peCrashWatch("vsync count", &gDisplayState.vsyncCount, sizeof gDisplayState.vsyncCount, PE_CRASH_WATCH_SIGNED);
+    peCrashWatch("last task callback", &gHostCurrentTaskCallback, sizeof(void*), PE_CRASH_WATCH_CODE);
 }
-#endif
 
 /* Port entry. Disc mounting goes here once the runtime loader exists; then the
  * original start-up path runs on the host stack (no SetSp). */
 int main(int argc, char** argv) {
-#ifndef _WIN32
-    struct sigaction sa = { .sa_sigaction = crashHandler, .sa_flags = SA_SIGINFO };
-    sigaction(SIGSEGV, &sa, NULL);
-    sigaction(SIGBUS, &sa, NULL);
-    sigaction(SIGILL, &sa, NULL);
-    sigaction(SIGFPE, &sa, NULL);
-    sigaction(SIGABRT, &sa, NULL);
-#endif
+    /* Reports go to standard error until peHostStartup knows the preferences folder. */
+    installCrashReporter();
     /* Disc image: first argument, or PE2_DISC. Game data is read from it at run time. */
     const char* disc = NULL;
     int startup = peHostStartup(argc, argv, &disc);

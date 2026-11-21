@@ -254,8 +254,21 @@ target_compile_definitions(parasite-eve-ii-pc PRIVATE __psyz SKIP_ASM)
 if(PSYZ_RENDERER STREQUAL "sdl3_gl")
     target_compile_definitions(parasite-eve-ii-pc PRIVATE PE2_RENDERER_OPENGL=1)
 endif()
-target_link_libraries(parasite-eve-ii-pc PRIVATE psyz)
-target_sources(parasite-eve-ii-pc PRIVATE src/port/spu_voice_attributes.c)
+target_link_libraries(parasite-eve-ii-pc PRIVATE psyz ${CMAKE_DL_LIBS})
+target_sources(parasite-eve-ii-pc PRIVATE src/port/spu_voice_attributes.c src/port/crash_report.c)
+# The version the log header and crash reports name: the project version, plus the commit when built from git
+# (recorded when CMake configures).
+find_package(Git QUIET)
+set(PE2_VERSION_STRING ${PROJECT_VERSION})
+if(GIT_FOUND)
+    execute_process(COMMAND ${GIT_EXECUTABLE} describe --always --dirty --abbrev=10
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} OUTPUT_VARIABLE _pe_git_revision
+        OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET RESULT_VARIABLE _pe_git_result)
+    if(_pe_git_result EQUAL 0 AND _pe_git_revision)
+        set(PE2_VERSION_STRING "${PROJECT_VERSION} (${_pe_git_revision})")
+    endif()
+endif()
+set_property(SOURCE src/port/main.c src/port/host_ui.c APPEND PROPERTY COMPILE_DEFINITIONS "PE2_VERSION=\"${PE2_VERSION_STRING}\"")
 option(PE2_HD_BACKGROUNDS "Show the experimental HD background pack options" OFF)
 if(PE2_HD_BACKGROUNDS)
     target_compile_definitions(parasite-eve-ii-pc PRIVATE PE2_HD_BACKGROUNDS_ENABLED=1)

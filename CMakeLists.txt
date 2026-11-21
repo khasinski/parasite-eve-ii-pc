@@ -151,6 +151,8 @@ pe_host_test(rupert_eyes_test INCLUDES include/decomp ${PE_GENERATED_DIR} DEFINE
 pe_host_test(cap_room_command_test SOURCES src/gameplay/cap_commands.c src/port/cap_asset.c
     INCLUDES include/decomp DEFINES __psyz SKIP_ASM LINK psyz STRIP)
 pe_host_test(memory_card_test SOURCES src/port/memory_card.c LINK psyz)
+# Crashes a child process on purpose (POSIX: fork) and checks the crash report it leaves.
+pe_host_test(crash_report_test SOURCES src/port/crash_report.c LINK ${CMAKE_DL_LIBS})
 
 # Host tests: `cmake --build build --target host_tests && ctest --test-dir build`. They need no game data, except
 # the ones in PE_DATA_TESTS, which read extracted assets given on the command line and are left to local runs.

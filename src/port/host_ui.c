@@ -30,6 +30,7 @@
 #include "port/backgrounds.h"
 #include "port/disc_assets.h"
 #include "port/asset_bind.h"
+#include "port/crash_report.h"
 #define STBTT_STATIC
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "ui/stb_truetype.h"
@@ -57,6 +58,10 @@ static const Color kPanel={0.075f,0.082f,0.102f,0.96f}, kText={0.93f,0.95f,0.98f
 static char discPaths[2][4096], configPath[4096], statusText[1024];
 static char logPath[4096];
 static int logToFile, stderrIsTerminal;
+static char previousCrashReport[4096];
+#ifndef PE2_VERSION
+#define PE2_VERSION "unknown"
+#endif
 static char hdPackPath[4096];
 static int hdEnabled=1;
 /* Artwork packs remain experimental. Aspect-ratio selection is available
@@ -194,13 +199,39 @@ static void openLog(int argc,char** argv) {
     setvbuf(stderr,NULL,_IONBF,0);
 #ifndef _WIN32
     dup2(STDERR_FILENO,STDOUT_FILENO);
+    setvbuf(stdout,NULL,_IOLBF,0); /* lines reach the file before a crash can lose them */
 #endif
     logToFile=1;stderrIsTerminal=0;
     time_t now=time(NULL);char when[64];
     strftime(when,sizeof when,"%Y-%m-%d %H:%M:%S",localtime(&now));
-    fprintf(stderr,"Parasite Eve II PC port, started %s\nPreferences: %s\nCommand line:",when,configDir);
+    fprintf(stderr,"Parasite Eve II PC port %s, started %s\nPreferences: %s\nCommand line:",PE2_VERSION,when,configDir);
     for(int i=0;i<argc;i++)fprintf(stderr," %s",argv[i]);
     fputc('\n',stderr);
+}
+
+/* Crash reports (src/port/crash_report.c) go next to the log as parasite-eve-ii-crash-<start time>.log. The newest
+ * ten are kept; the next start names the one a crashed run left, once. */
+static int compareNames(const void* a,const void* b) { return strcmp(*(char* const*)a,*(char* const*)b); }
+static void pruneCrashReports(const char* pattern,int keep) {
+    int count=0;
+    char** names=SDL_GlobDirectory(configDir,pattern,0,&count);
+    if(!names)return;
+    qsort(names,(size_t)count,sizeof *names,compareNames); /* the stamp sorts by time */
+    for(int i=0;i<count-keep;i++) {
+        char path[4096];
+        if(snprintf(path,sizeof path,"%s/%s",configDir,names[i])<(int)sizeof path)remove(path);
+    }
+    SDL_free(names);
+}
+static void startCrashReporter(void) {
+    time_t now=time(NULL);char stamp[32];
+    strftime(stamp,sizeof stamp,"%Y%m%d-%H%M%S",localtime(&now));
+    if(peCrashTakePreviousReport(configDir,previousCrashReport,sizeof previousCrashReport))
+        fprintf(stderr,"[crash] the previous run crashed; its crash report is %s\n",previousCrashReport);
+    pruneCrashReports("parasite-eve-ii-crash-*.log",10);
+    pruneCrashReports("parasite-eve-ii-crash-*.dmp",10);
+    peCrashSetOutput(configDir,logToFile?logPath:NULL,stamp);
+    peCrashTestTrigger();
 }
 
 void peHostReportError(const char* format,...) {
@@ -209,9 +240,13 @@ void peHostReportError(const char* format,...) {
     fprintf(stderr,"error: %s\n",message);fflush(stderr);
     /* Someone at a terminal reads it there; a game started from a launcher shows it in a window. */
     if(stderrIsTerminal || getenv("PSYZ_HEADLESS"))return;
-    char text[3072];
+    char text[12288];
     if(logToFile)snprintf(text,sizeof text,"%s\n\nThe log is in:\n%s",message,logPath);
     else snprintf(text,sizeof text,"%s",message);
+    if(*previousCrashReport) {
+        size_t used=strlen(text);
+        snprintf(text+used,sizeof text-used,"\n\nThe previous run crashed. Its crash report is:\n%s",previousCrashReport);
+    }
     if(!SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,"Parasite Eve II",text,uiWindow))
         fprintf(stderr,"(could not show the error window: %s)\n",SDL_GetError());
 }
@@ -593,6 +628,7 @@ int peHostStartup(int argc,char** argv,const char** disc) {
      * framebuffer; menu saves still use the live renderer's applied value. */
     unsigned startupScale=loadOptions();
     openLog(argc,argv);
+    startCrashReporter();
     int menuOnly=0,validateOnly=0,widescreenSeen=0,hdSeen=0;
     const char* hdEnvironment=getenv("PE2_HD_BACKGROUNDS");
     /* Launchers may export an empty variable for a disc the player skipped. */

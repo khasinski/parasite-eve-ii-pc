@@ -315,8 +315,8 @@ static void pePadControlRead(uint64_t index, char* frame, size_t length)
 }
 
 /* Scripted input for automated runs. Each development feature lives in its own function so
- * Psyz_PadsOverride stays readable; the shared pad-poll tick count is file scope. */
-static int pePadTickCount;
+ * Psyz_PadsOverride stays readable; the shared pad-poll tick count is file scope (and in the crash report). */
+int pePadTickCount;
 
 /* PE2_FAST=1 lifts the frame limiter while an FMV plays, so development runs skip the intro. */
 static void pePadFastMovieVsync(int port)

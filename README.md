@@ -51,8 +51,18 @@ disc is ever committed: `tools/ci/check_no_game_data.sh` enforces that.
 **If it does not start:** a disc or start-up error is shown in a window and written to the log. Started from a
 terminal, the log is the terminal itself. Started from Finder or a desktop launcher, it is `parasite-eve-ii.log` in the
 preferences folder, rewritten on each start: `~/Library/Application Support/parasite-eve/parasite-eve-ii/` on macOS,
-`~/.local/share/parasite-eve/parasite-eve-ii/` on Linux. Attach that file to a bug report. `PE2_LOG=<file>` writes the
-log to a file of your choice.
+`~/.local/share/parasite-eve/parasite-eve-ii/` on Linux, `%APPDATA%\parasite-eve\parasite-eve-ii\` on Windows. Attach
+that file to a bug report. `PE2_LOG=<file>` writes the log to a file of your choice.
+
+**If it crashes:** a crash report is written to the same folder as `parasite-eve-ii-crash-<start time>.log` (for example
+`parasite-eve-ii-crash-20261121-142530.log`), one per crashed run; normal starts never overwrite it, and the newest ten
+are kept. It names the version, the system, the signal or exception and fault address, the stage/area/view/room, disc,
+pad tick and frame counters, a native backtrace and the last lines of the log. On Windows a minidump
+(`parasite-eve-ii-crash-<start time>.dmp`) is written next to it. The next start prints the report's path in the log
+(and in the start-up error window, if one is shown). Attach the crash report, and the minidump if there is one, to
+the bug report. Backtrace addresses that are not symbolised can be resolved against the same build with
+`atos -o parasite-eve-ii-pc -l <load address> <address>` (macOS) or `addr2line -f -e parasite-eve-ii-pc <offset>`
+(Linux `+0x` offsets, Windows `module+offset`, adding the image base 0x140000000 for a MinGW executable).
 
 Graphics → Aspect ratio offers Classic 4:3, Square pixels and Widescreen (16:9).
 `--widescreen 0|1` overrides the saved preference in normal builds as well.
@@ -78,6 +88,7 @@ and copy the result back (see [docs/PORT_PLAN.md](docs/PORT_PLAN.md)).
 | --- | --- |
 | `PE2_SKIPINTRO=1` | skip the opening movie |
 | `PE2_LOG=<file>` | write standard output and error to this file (rewritten on each start) |
+| `PE2_TEST_CRASH=segv\|abort\|stack\|fpe\|ill` | crash on purpose right after start-up, to check the crash report |
 | `PE2_HD_BACKGROUNDS=<directory>` | experimental local PE2BG1 atlas pack (builds with `-DPE2_HD_BACKGROUNDS=ON` only); use Picture detail 2x+ and `--widescreen 0|1`; missing/invalid art retains 4:3 |
 | `PE2_DUMP_BACKGROUNDS=<directory>` | export native RGB555 backdrops and observed logical locations for local artwork work; never commit these exports |
 | `PE2_DUMP_FRAME=<tick>:<file.ppm>` | capture the actual presenter, including HD/widescreen framing; `PSYZ_HEADLESS=gpu` uses a hidden GPU window |
