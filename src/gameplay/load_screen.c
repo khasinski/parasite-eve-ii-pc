@@ -42,6 +42,10 @@
 #include "main/loadui.h"
 #include "main/mc.h"
 #include "main/mem.h"
+#ifdef __psyz
+#include "port/location_check.h"
+#include <stdio.h>
+#endif
 #include "main/pad.h"
 #include "main/session.h"
 #include "main/sound.h"
@@ -249,6 +253,15 @@ void areaStartRoomRuntime(s32 skipViewGate)
     stage     = location->stage;
     warpId    = location->warp;
 #ifdef __psyz
+    {   // Diagnostic only: the reads below are unchecked, as in the original. Name a location outside the
+        // tables (never produced by the game's own triggers or scripts) before it is used.
+        PeLocationReport report;
+        char             reason[256];
+        if (peLocationCheck(peLocationGameTables(), stage, location->area, location->roomState, warpId, &report) > PE_LOCATION_DEBUG_ROOM) {
+            peLocationDescribe(&report, stage, location->area, location->roomState, warpId, reason, sizeof(reason));
+            fprintf(stderr, "[location] room start at an invalid location: %s\n", reason);
+        }
+    }
     // Rooms the game never warps into (e.g. MIST_R21) have no entry rows.
     if ((stage == 1 && location->area > 20) || gDirectionAreaWarpEntriesByStage[stage - 1][location->area - 1] == NULL) {
         memset(&warpEntry, 0, sizeof(warpEntry));

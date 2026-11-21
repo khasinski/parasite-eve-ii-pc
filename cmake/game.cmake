@@ -195,6 +195,8 @@ set_property(SOURCE src/actors/actor_00700/actor_00700.c
 add_library(game_overlays OBJECT ${PE_OVERLAY_LIST})
 target_sources(game_overlays PRIVATE src/port/area_updates.c)
 target_sources(game_overlays PRIVATE src/port/encounter_spots.c)
+# Development-location bounds: the stage directories' tables and the C arrays they borrow.
+target_sources(game_overlays PRIVATE src/port/location_tables.c src/port/location_extents.c)
 target_include_directories(game_overlays PUBLIC include include/decomp
     ${PE_GENERATED_DIR})
 target_compile_definitions(game_overlays PUBLIC __psyz SKIP_ASM)
@@ -255,7 +257,7 @@ if(PSYZ_RENDERER STREQUAL "sdl3_gl")
     target_compile_definitions(parasite-eve-ii-pc PRIVATE PE2_RENDERER_OPENGL=1)
 endif()
 target_link_libraries(parasite-eve-ii-pc PRIVATE psyz ${CMAKE_DL_LIBS})
-target_sources(parasite-eve-ii-pc PRIVATE src/port/spu_voice_attributes.c src/port/crash_report.c)
+target_sources(parasite-eve-ii-pc PRIVATE src/port/spu_voice_attributes.c src/port/crash_report.c src/port/location_check.c)
 # The version the log header and crash reports name: the project version, plus the commit when built from git
 # (recorded when CMake configures).
 find_package(Git QUIET)

@@ -3,6 +3,7 @@
 #include "port/backgrounds.h"
 #include <inttypes.h>
 #include "port/memory_card.h"
+#include "port/location_check.h"
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -419,6 +420,11 @@ static void pePadWarp(int tick)
         if (tick != warps[i].tick) continue;
         extern void peDebugWarp(const GameLocationKey*);
         const unsigned* k = warps[i].key;
+        /* Room start indexes the warp and room tables without bounds checks. */
+        if (!peLocationAcceptDev("PE2_WARP", k[0], k[1], k[3], k[4])) {
+            fprintf(stderr, "[location] PE2_WARP at tick %d to %u,%u,%u,%u,%u,%u skipped\n", tick, k[0], k[1], k[2], k[3], k[4], k[5]);
+            continue;
+        }
         GameLocationKey key = { (u8)k[2], (u8)k[3], (u8)k[1], (u8)k[0], (u8)k[4], (u8)k[5], { 0, 0 } };
         peDebugWarp(&key);
     }

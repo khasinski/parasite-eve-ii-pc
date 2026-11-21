@@ -40,6 +40,10 @@ typedef struct PeAssetBinding {
 typedef void (*PeAssetDecode)(void* dst, const unsigned char* src, size_t count);
 #define PE_ASSET_BIND_DECODE(key, array, decode) PE_ASSET_BIND_AUX(key, array, (const void*)(PeAssetDecode)(decode))
 
+/* Byte size of the bound array that starts at `array` (whether or not it is loaded yet), or 0 when no binding
+ * targets that address. */
+size_t peAssetBindingBytes(const void* array);
+
 struct PeDisc;
 /* Fills previously unloaded bindings whose packages are on the mounted disc.
  * Returns the number newly filled. Missing bindings are retried on later

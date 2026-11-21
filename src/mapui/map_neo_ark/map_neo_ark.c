@@ -3,6 +3,9 @@
 #include <psyz.h>
 
 #include "types.h"
+#ifdef __psyz
+#include "port/location_check.h"
+#endif
 
 #include "gameplay/area_flags.h"
 #include "gameplay/areaplace.h"
@@ -1061,6 +1064,22 @@ static WorldCollisionRoomResources* _gMapNeoArkWorldCollisionAreaRooms[MAP_NEO_A
     [GAME_AREA_NEO_ARK_PYRAMID - 1]              = gNeoArkPyramidRoomCollisionResources,
     [GAME_AREA_NEO_ARK_SUBSTATION - 1]           = gNeoArkSubstationRoomCollisionResources,
 };
+
+#ifdef __psyz
+/// Sizes of the room arrays above that only this file can name, for location checks (src/port/location_tables.c).
+const PeLocationArrayExtent gMapNeoArkLocationExtents[] = {
+    { _gMapNeoArkNurseryCollisionRooms, sizeof(_gMapNeoArkNurseryCollisionRooms) },
+    { _gMapNeoArkGrowthRoomCollisionRooms, sizeof(_gMapNeoArkGrowthRoomCollisionRooms) },
+    { _gMapNeoArkCorridorCollisionRooms, sizeof(_gMapNeoArkCorridorCollisionRooms) },
+    { _gMapNeoArkTrainingRoomCollisionRooms, sizeof(_gMapNeoArkTrainingRoomCollisionRooms) },
+    { _gMapNeoArkBridgeCollisionRooms, sizeof(_gMapNeoArkBridgeCollisionRooms) },
+    { _gMapNeoArkTentCollisionRooms, sizeof(_gMapNeoArkTentCollisionRooms) },
+    { _gMapNeoArkWoodlandPathCollisionRooms, sizeof(_gMapNeoArkWoodlandPathCollisionRooms) },
+    { _gMapNeoArkSubmarineGalleryCollisionRooms, sizeof(_gMapNeoArkSubmarineGalleryCollisionRooms) },
+    { _gMapNeoArkR31CollisionRooms, sizeof(_gMapNeoArkR31CollisionRooms) },
+};
+const int gMapNeoArkLocationExtentCount = ARRAY_SIZE(gMapNeoArkLocationExtents);
+#endif
 
 WorldCollisionStageResources gMapNeoArkWorldCollisionResources = { .areaRooms = _gMapNeoArkWorldCollisionAreaRooms };
 

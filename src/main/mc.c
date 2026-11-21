@@ -1,5 +1,6 @@
 #include "mc.h"
 #include "port/asset_bind.h"
+#include "port/location_check.h"
 
 #include <psyz.h>
 #include <romio.h>
@@ -8,6 +9,7 @@
 #define MemCardGetDirentry peMemoryCardGetDirentry
 #endif
 #include <memory.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <strings.h>
 
@@ -960,7 +962,12 @@ static void _mcSeedNewGameRecords(void)
     {   // Development: PE2_START_LOCATION=stage,area,view,roomState,warp,variant starts a new game elsewhere.
         const char* spec = getenv("PE2_START_LOCATION");
         unsigned    v[6];
-        if (spec && sscanf(spec, "%u,%u,%u,%u,%u,%u", &v[0], &v[1], &v[2], &v[3], &v[4], &v[5]) == 6) {
+        if (spec && sscanf(spec, "%u,%u,%u,%u,%u,%u", &v[0], &v[1], &v[2], &v[3], &v[4], &v[5]) != 6) {
+            fprintf(stderr, "[location] PE2_START_LOCATION=%s ignored: expected stage,area,view,roomState,warp,variant\n", spec);
+        } else if (spec && !peLocationAcceptDev("PE2_START_LOCATION", v[0], v[1], v[3], v[4])) {
+            // Room start indexes the warp and room tables without bounds checks.
+            fprintf(stderr, "[location] PE2_START_LOCATION=%s ignored: the new game starts at the default location\n", spec);
+        } else if (spec) {
             openingSave->state.location.stage     = (u8)v[0];
             openingSave->state.location.area      = (u8)v[1];
             openingSave->state.location.view      = (u8)v[2];

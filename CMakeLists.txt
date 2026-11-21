@@ -154,6 +154,8 @@ pe_host_test(cap_room_command_test SOURCES src/gameplay/cap_commands.c src/port/
 pe_host_test(memory_card_test SOURCES src/port/memory_card.c LINK psyz)
 # Crashes a child process on purpose (POSIX: fork) and checks the crash report it leaves.
 pe_host_test(crash_report_test SOURCES src/port/crash_report.c LINK ${CMAKE_DL_LIBS})
+# Development start/warp locations are bounded by the area's warp and room tables (PE2_START_LOCATION crash).
+pe_host_test(location_check_test SOURCES src/port/location_check.c)
 
 # Host tests: `cmake --build build --target host_tests && ctest --test-dir build`. They need no game data, except
 # the ones in PE_DATA_TESTS, which read extracted assets given on the command line and are left to local runs.
@@ -256,8 +258,8 @@ add_custom_target(portable_graphics_tests DEPENDS ${PE_PORTABLE_GRAPHICS_TESTS})
 set_tests_properties(${PE_PORTABLE_GRAPHICS_TESTS} PROPERTIES LABELS "portable-graphics")
 add_custom_target(portable_audio_tests DEPENDS audio_startup_test)
 set_tests_properties(audio_startup_test PROPERTIES LABELS "portable-audio")
-add_custom_target(portable_gameplay_tests DEPENDS gallery_wave_ownership_test fixed_log_test desert_chaser_catch_bank_test host_heap_test fixed_math_test task_teardown_test)
-set_tests_properties(gallery_wave_ownership_test fixed_log_test desert_chaser_catch_bank_test host_heap_test fixed_math_test task_teardown_test PROPERTIES LABELS "portable-gameplay")
+add_custom_target(portable_gameplay_tests DEPENDS gallery_wave_ownership_test fixed_log_test desert_chaser_catch_bank_test host_heap_test fixed_math_test task_teardown_test location_check_test)
+set_tests_properties(gallery_wave_ownership_test fixed_log_test desert_chaser_catch_bank_test host_heap_test fixed_math_test task_teardown_test location_check_test PROPERTIES LABELS "portable-gameplay")
 if(MINGW)
     # These fixtures retain only selected paths from complete gameplay units,
     # like scene_timing_buffer_test above. Do not retain unrelated COFF unwind

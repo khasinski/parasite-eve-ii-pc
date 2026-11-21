@@ -97,7 +97,8 @@ and copy the result back (see [docs/PORT_PLAN.md](docs/PORT_PLAN.md)).
 | `PE2_MENU_PAGE=<0-3>` | open the host menu on this page (with `--host-menu`) |
 | `PE2_DUMP_MENU=<file.ppm>` | write the painted host menu (`--host-menu`) as a PPM, for review without a screen capture |
 | `PE2_WARP=<tick>:stage,area,view,roomState,warp,variant[;<tick>:...]` | change stage during play at that pad tick (the session-start path a stage change takes); up to 8, separated by `;` |
-| `PE2_START_LOCATION=stage,area,view,roomState,warp,variant` | new game starts there (stages 1-5; stages 4 and 5 need `--disc2`) |
+| `PE2_START_LOCATION=stage,area,view,roomState,warp,variant` | new game starts there (stages 1-5; stages 4 and 5 need `--disc2`); a room state or warp outside the area's tables is rejected with a `[location]` log line |
+| `PE2_LOCATION_AUDIT=1` | list every area's room/warp counts, check every warp trigger against them, then exit; `tools/port/location_sweep.py` starts a game at each warp |
 | `PE2_FAST=1` | no frame limiter during movies |
 | `PE2_AUTOPRESS=<tick>` | scripted Start/Cross from that tick |
 | `PE2_PAD_REPLAY=<file>` / `PE2_PAD_RECORD=<file>` | replay or record input (see `tools/port/make_gallery_input.py`) |

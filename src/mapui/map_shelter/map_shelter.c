@@ -3,6 +3,9 @@
 #include <psyz.h>
 
 #include "types.h"
+#ifdef __psyz
+#include "port/location_check.h"
+#endif
 
 #include "actors/actor_503500.h"
 
@@ -1726,6 +1729,42 @@ static WorldCollisionRoomResources* _gMapShelterWorldCollisionAreaRooms[GAME_ARE
     [GAME_AREA_SHELTER_R48 - 1]                           = gShelterR48RoomCollisionResources,
     [GAME_AREA_SHELTER_R49 - 1]                           = gShelterR49RoomCollisionResources,
 };
+
+#ifdef __psyz
+/// Sizes of the room arrays above that only this file can name, for location checks (src/port/location_tables.c).
+const PeLocationArrayExtent gMapShelterLocationExtents[] = {
+    { _gMapShelterB1NorthMaintenanceWalkwayRoomCollisionResources, sizeof(_gMapShelterB1NorthMaintenanceWalkwayRoomCollisionResources) },
+    { _gMapShelterB1ArmoryRoomCollisionResources, sizeof(_gMapShelterB1ArmoryRoomCollisionResources) },
+    { _gMapShelterB1SleepingQuartersRoomCollisionResources, sizeof(_gMapShelterB1SleepingQuartersRoomCollisionResources) },
+    { _gMapShelterB1MainCorridorRoomCollisionResources, sizeof(_gMapShelterB1MainCorridorRoomCollisionResources) },
+    { _gMapShelterB1PodAccessTunnelRoomCollisionResources, sizeof(_gMapShelterB1PodAccessTunnelRoomCollisionResources) },
+    { _gMapShelterB1ControlRoomRoomCollisionResources, sizeof(_gMapShelterB1ControlRoomRoomCollisionResources) },
+    { _gMapShelterB1AccessTunnelRoomCollisionResources, sizeof(_gMapShelterB1AccessTunnelRoomCollisionResources) },
+    { _gMapShelterB1GolemFreezer1RoomCollisionResources, sizeof(_gMapShelterB1GolemFreezer1RoomCollisionResources) },
+    { _gMapShelterB1PodServiceGantryRoomCollisionResources, sizeof(_gMapShelterB1PodServiceGantryRoomCollisionResources) },
+    { _gMapShelterB1TransferTunnelRoomCollisionResources, sizeof(_gMapShelterB1TransferTunnelRoomCollisionResources) },
+    { _gMapShelterB1ControlRoomAccessTunnelRoomCollisionResources, sizeof(_gMapShelterB1ControlRoomAccessTunnelRoomCollisionResources) },
+    { _gMapShelterB2ElevatorRoomCollisionResources, sizeof(_gMapShelterB2ElevatorRoomCollisionResources) },
+    { _gMapShelterB2ElevatorHallRoomCollisionResources, sizeof(_gMapShelterB2ElevatorHallRoomCollisionResources) },
+    { _gMapShelterB2SouthMaintenanceWalkwayRoomCollisionResources, sizeof(_gMapShelterB2SouthMaintenanceWalkwayRoomCollisionResources) },
+    { _gMapShelterB2OperatingRoomCollisionResources, sizeof(_gMapShelterB2OperatingRoomCollisionResources) },
+    { _gMapShelterB2NorthMaintenanceWalkwayRoomCollisionResources, sizeof(_gMapShelterB2NorthMaintenanceWalkwayRoomCollisionResources) },
+    { _gMapShelterB2LaboratoryRoomCollisionResources, sizeof(_gMapShelterB2LaboratoryRoomCollisionResources) },
+    { _gMapShelterB2BreedingRoomCollisionResources, sizeof(_gMapShelterB2BreedingRoomCollisionResources) },
+    { _gMapShelterB2MainCorridorRoomCollisionResources, sizeof(_gMapShelterB2MainCorridorRoomCollisionResources) },
+    { _gMapShelterB2SepticTankRoomCollisionResources, sizeof(_gMapShelterB2SepticTankRoomCollisionResources) },
+    { _gMapShelterR36RoomCollisionResources, sizeof(_gMapShelterR36RoomCollisionResources) },
+    { _gMapShelterR37RoomCollisionResources, sizeof(_gMapShelterR37RoomCollisionResources) },
+    { _gMapShelter1fHeliportS4RoomCollisionResources, sizeof(_gMapShelter1fHeliportS4RoomCollisionResources) },
+    { _gMapShelterB3IncineratorControlRoomCollisionResources, sizeof(_gMapShelterB3IncineratorControlRoomCollisionResources) },
+    { _gMapShelterB3ElevatorHallRoomCollisionResources, sizeof(_gMapShelterB3ElevatorHallRoomCollisionResources) },
+    { _gMapShelterB4LowerSewerRoomCollisionResources, sizeof(_gMapShelterB4LowerSewerRoomCollisionResources) },
+    { _gMapShelterB4UpperSewerRoomCollisionResources, sizeof(_gMapShelterB4UpperSewerRoomCollisionResources) },
+    { _gMapShelterB4WaterSupplyRoomCollisionResources, sizeof(_gMapShelterB4WaterSupplyRoomCollisionResources) },
+    { _gMapShelterR47RoomCollisionResources, sizeof(_gMapShelterR47RoomCollisionResources) },
+};
+const int gMapShelterLocationExtentCount = ARRAY_SIZE(gMapShelterLocationExtents);
+#endif
 
 WorldCollisionStageResources gMapShelterWorldCollisionResources = { .areaRooms = _gMapShelterWorldCollisionAreaRooms };
 

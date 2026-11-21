@@ -76,6 +76,10 @@ int main(int argc, char** argv) {
         }
         if (getenv("PE2_DUMP_ASSETS")) peAssetsDump(getenv("PE2_DUMP_ASSETS"));
         peDiscClose(assets);
+        if (getenv("PE2_LOCATION_AUDIT")) { /* development: check every warp trigger against the warp tables, then exit */
+            extern int peLocationAuditTriggers(void);
+            return peLocationAuditTriggers() ? 1 : 0;
+        }
     }
     if (getenv("PE2_DEBUG_PORT")) { /* development: PsyZ HTTP debug server on 127.0.0.1 (/screenshot, /vram, /input) */
         extern int Psyz_DebugServer(int);

@@ -62,6 +62,16 @@ static const PeAssetPart* findPart(const char* key)
     return p ? p : searchParts(gPeAsmParts, gPeAsmPartCount, key);
 }
 
+size_t peAssetBindingBytes(const void* array)
+{
+    size_t                n;
+    const PeAssetBinding* b = bindings(&n);
+    for (size_t i = 0; array && i < n; i++) {
+        if (b[i].dst == array) return b[i].size;
+    }
+    return 0;
+}
+
 int peAssetsLoad(struct PeDisc* disc)
 {
     /* A cache belongs to this mounted image. Package IDs recur on the other disc. */
