@@ -6,4 +6,5 @@ pub mod cli;
 pub mod edit;
 pub mod gui;
 pub mod layout;
+pub mod names;
 pub mod save;

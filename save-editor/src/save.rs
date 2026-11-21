@@ -102,8 +102,9 @@ pub const SAVE_POINT_LABELS: [&str; 17] = [
     "Motel Room 6",
 ];
 
-/// Run mode (`McSaveState::gameMode`).
-pub const GAME_MODE_LABELS: [&str; 4] = ["Replay", "Bounty", "Scavenger", "Nightmare"];
+/// Run mode (`McSaveState::gameMode`). Mode 0 is "Normal" before the first
+/// clear; `names::game_mode_label` takes the clear count into account.
+pub const GAME_MODE_LABELS: [&str; 4] = ["Normal/Replay", "Bounty", "Scavenger", "Nightmare"];
 
 /// One inventory row (`InventoryItemRow`), little-endian on card.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -538,6 +539,121 @@ impl SaveImage {
             self.set_item_seen_bit(id, true);
         }
     }
+
+    // -- named inventory helpers -----------------------------------------------------
+
+    /// Row indices of the carried window (`carriedItems`), clipped to the table.
+    pub fn carried_row_indices(&self) -> std::ops::Range<usize> {
+        let r = self.carried_range();
+        let start = (r.first_row as usize).min(ITEM_ROW_COUNT);
+        let end = (start + r.row_count as usize).min(ITEM_ROW_COUNT);
+        start..end
+    }
+
+    /// Whether a key item (id 0x100..0x17F, or its bit index) is held.
+    ///
+    /// Key items are not rows: possession is the collection bit selected by the
+    /// id's low seven bits (`inventoryGetItemQuantity`, include/gameplay/items.h).
+    pub fn has_key_item(&self, id: u16) -> bool {
+        self.collected_bit((id & 0x7F) as usize)
+    }
+    /// Give or take a key item by setting or clearing its collection bit.
+    pub fn set_key_item(&mut self, id: u16, held: bool) {
+        self.set_collected_bit((id & 0x7F) as usize, held);
+    }
+
+    /// Ammunition loaded into carried weapons, which the row quantity includes
+    /// (`InventoryItemRow`, include/main/mc_types.h:26).
+    pub fn loaded_qty(&self, ammo_id: u8) -> u32 {
+        if !(0xA0..=0xBF).contains(&ammo_id) {
+            return 0;
+        }
+        let mut weapons = [false; WEAPON_LOAD_COUNT];
+        for i in self.carried_row_indices() {
+            let id = self.item_row(i).item_id;
+            if (0x80..=0x9F).contains(&id) {
+                weapons[(id - 0x80) as usize] = true;
+            }
+        }
+        let mut total = 0u32;
+        for (i, carried) in weapons.iter().enumerate() {
+            if *carried {
+                let load = self.weapon_load(i);
+                if load.primary_item_id == ammo_id {
+                    total += load.primary_qty as u32;
+                }
+                if load.secondary_item_id == ammo_id {
+                    total += load.secondary_qty as u32;
+                }
+            }
+        }
+        total
+    }
+
+    /// Add an item to the carried window, the way `inventoryGiveItem` does:
+    /// ammunition and supplies (0xA0..0xBF) join the first matching stack,
+    /// everything else takes one free row per unit with quantity one.
+    /// Returns the row touched last.
+    pub fn give_item(&mut self, item_id: u8, qty: u16) -> Result<usize> {
+        if item_id == 0 {
+            bail!("item id 0 is the empty-row marker");
+        }
+        let qty = qty.max(1);
+        let rows = self.carried_row_indices();
+        if rows.is_empty() {
+            bail!("the carried range is empty; set first-row/row-count first");
+        }
+        if (0xA0..=0xBF).contains(&item_id) {
+            if let Some(i) = rows.clone().find(|i| self.item_row(*i).item_id == item_id) {
+                let mut row = self.item_row(i);
+                row.qty = row.qty.saturating_add(qty);
+                self.set_item_row(i, row);
+                return Ok(i);
+            }
+            let i = self.free_carried_row()?;
+            self.set_item_row(
+                i,
+                ItemRow {
+                    item_id,
+                    attach_slot: 0,
+                    qty,
+                },
+            );
+            return Ok(i);
+        }
+        let mut last = None;
+        for _ in 0..qty {
+            let i = self.free_carried_row()?;
+            self.set_item_row(
+                i,
+                ItemRow {
+                    item_id,
+                    attach_slot: 0,
+                    qty: 1,
+                },
+            );
+            last = Some(i);
+        }
+        Ok(last.expect("qty >= 1"))
+    }
+
+    fn free_carried_row(&self) -> Result<usize> {
+        self.carried_row_indices()
+            .find(|i| self.item_row(*i).item_id == 0)
+            .ok_or_else(|| anyhow::anyhow!("no free row in the carried range"))
+    }
+
+    /// Remove every carried row holding `item_id`; returns how many rows were cleared.
+    pub fn remove_item(&mut self, item_id: u8) -> usize {
+        let mut cleared = 0;
+        for i in self.carried_row_indices() {
+            if item_id != 0 && self.item_row(i).item_id == item_id {
+                self.set_item_row(i, ItemRow::default());
+                cleared += 1;
+            }
+        }
+        cleared
+    }
 }
 
 /// Serializable snapshot of the typed fields for JSON transfer.
@@ -872,6 +988,77 @@ mod tests {
         other.apply_transfer(&serde_json::from_str(&json).unwrap());
         assert_eq!(other.player_exp(), 1234);
         assert_eq!(other.raw[0x30], 0); // unmodeled bytes are untouched by import
+    }
+
+    fn with_carried_range(first: u8, count: u8) -> SaveImage {
+        let mut save = SaveImage::blank();
+        save.set_carried_range(CarriedRange {
+            first_row: first,
+            row_count: count,
+            table_id: 0,
+            field_3: 0,
+        });
+        save
+    }
+
+    #[test]
+    fn give_item_stacks_ammo_and_spreads_rows() {
+        let mut save = with_carried_range(0, 4);
+        let row = save.give_item(0xA0, 50).unwrap();
+        assert_eq!(
+            save.give_item(0xA0, 25).unwrap(),
+            row,
+            "ammo shares one stack"
+        );
+        assert_eq!(save.item_row(row).qty, 75);
+        save.give_item(0x01, 2).unwrap(); // two Recovery1 rows
+        assert_eq!(
+            (0..4).filter(|i| save.item_row(*i).item_id == 0x01).count(),
+            2
+        );
+        save.give_item(0x81, 1).unwrap();
+        assert!(save.give_item(0x82, 1).is_err(), "window is full");
+        assert_eq!(save.remove_item(0x01), 2);
+        assert!(save.give_item(0x82, 1).is_ok());
+        // Rows outside the window are untouched.
+        assert_eq!(save.item_row(4), ItemRow::default());
+    }
+
+    #[test]
+    fn loaded_qty_counts_carried_weapons_only() {
+        let mut save = with_carried_range(0, 4);
+        save.give_item(0x81, 1).unwrap(); // M93R
+        save.give_item(0xA0, 100).unwrap();
+        save.set_weapon_load(
+            1,
+            WeaponLoad {
+                primary_item_id: 0xA0,
+                primary_qty: 20,
+                secondary_item_id: 0xFF,
+                ..Default::default()
+            },
+        );
+        // A load on a weapon that is not carried does not count.
+        save.set_weapon_load(
+            3,
+            WeaponLoad {
+                primary_item_id: 0xA0,
+                primary_qty: 7,
+                ..Default::default()
+            },
+        );
+        assert_eq!(save.loaded_qty(0xA0), 20);
+        assert_eq!(save.loaded_qty(0x01), 0);
+    }
+
+    #[test]
+    fn key_items_are_collection_bits() {
+        let mut save = SaveImage::blank();
+        save.set_key_item(0x106, true); // MIST Badge
+        assert!(save.has_key_item(0x106));
+        assert_eq!(save.raw[OFF_COLLECTED_BITS], 0x40);
+        save.set_key_item(0x106, false);
+        assert!(!save.has_key_item(0x106));
     }
 
     #[test]
