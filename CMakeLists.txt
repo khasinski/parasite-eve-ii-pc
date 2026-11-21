@@ -120,6 +120,7 @@ pe_host_test(observatory_scene_lifecycle_test INCLUDES include/decomp ${PE_GENER
     DEFINES __psyz SKIP_ASM OPTIONS -Wno-incompatible-function-pointer-types LINK psyz STRIP)
 pe_host_test(raster_clock_test DEFINES __psyz LINK psyz)
 pe_host_test(gpu_tpage_test INCLUDES include/decomp DEFINES __psyz SKIP_ASM LINK psyz)
+pe_host_test(draw_area_empty_test DEFINES __psyz SKIP_ASM LINK psyz)
 pe_host_test(pad_trace_test SOURCES src/port/pad_trace.c)
 pe_host_test(hud_hp_packet_test INCLUDES include/decomp ${PE_GENERATED_DIR} DEFINES __psyz SKIP_ASM OPTIONS -w LINK psyz STRIP)
 pe_host_test(world_target_overlay_test INCLUDES include/decomp ${PE_GENERATED_DIR} DEFINES __psyz SKIP_ASM OPTIONS -w LINK psyz STRIP)
@@ -232,7 +233,10 @@ foreach(_t IN LISTS _pe_targets)
         add_test(NAME ${_t} COMMAND ${_t})
     endif()
 endforeach()
-set_tests_properties(hud_hp_packet_test world_target_overlay_test gpu_state_test gpu_tpage_test caption_packet_test PROPERTIES ENVIRONMENT "PSYZ_HEADLESS=1;SDL_AUDIODRIVER=dummy")
+set_tests_properties(hud_hp_packet_test world_target_overlay_test gpu_state_test gpu_tpage_test caption_packet_test draw_area_empty_test PROPERTIES ENVIRONMENT "PSYZ_HEADLESS=1;SDL_AUDIODRIVER=dummy")
+# The same fixture on the hidden SDL_GPU renderer (Metal/Vulkan/D3D12); skipped without a device.
+add_test(NAME draw_area_empty_gpu_test COMMAND draw_area_empty_test)
+set_tests_properties(draw_area_empty_gpu_test PROPERTIES ENVIRONMENT "PSYZ_HEADLESS=gpu;SDL_AUDIODRIVER=dummy" SKIP_RETURN_CODE 77)
 set_tests_properties(audio_startup_test PROPERTIES ENVIRONMENT "PSYZ_HEADLESS=1;SDL_AUDIODRIVER=dummy;PSYZ_AUDIO_CLOCK=video")
 if(CMAKE_C_FLAGS MATCHES "-fsanitize=[^ ]*address")
     find_package(Python3 COMPONENTS Interpreter QUIET)
@@ -246,7 +250,7 @@ endif()
 set(PE_PORTABLE_GRAPHICS_TESTS
     actor_walk_gap_test sdk_random_test port_random_test screen_negative_test
     gte_compat_test asset_disc_cache_test background_coverage_test background_pack_test
-    foreground_packet_test gpu_state_test hud_hp_packet_test world_target_overlay_test foreground_pack_test foreground_stage_test
+    foreground_packet_test gpu_state_test draw_area_empty_test hud_hp_packet_test world_target_overlay_test foreground_pack_test foreground_stage_test
     scene_timing_buffer_test water_grid_packet_test bezier_curve_test background_capture_target_test)
 add_custom_target(portable_graphics_tests DEPENDS ${PE_PORTABLE_GRAPHICS_TESTS})
 set_tests_properties(${PE_PORTABLE_GRAPHICS_TESTS} PROPERTIES LABELS "portable-graphics")
