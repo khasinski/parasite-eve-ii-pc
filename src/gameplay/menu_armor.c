@@ -336,7 +336,7 @@ static void _itemMenuSizeAttachmentPicker(UiList* list, UiObject* unused)
     candidateCount = 0;
     row            = &row[carriedItems->firstRow];
     for (rowIndex = 0; rowIndex < carriedItems->rowCount; rowIndex++, row++) {
-        if ((gItemDescriptors[row->itemId].flags & ITEM_FLAG_NO_ATTACHMENT) || (row->itemId == INVENTORY_ITEM_NONE)) {
+        if ((ITEM_ROW_DESCRIPTOR(row->itemId)->flags & ITEM_FLAG_NO_ATTACHMENT) || (row->itemId == INVENTORY_ITEM_NONE)) {
             continue;
         }
         if ((u8)(row->itemId + EQUIPMENT_WEAPON_ITEM_FIRST) < ARRAY_SIZE(gMcSaveData[MEMORY_CARD_SAVE_LIVE].state.weaponItems) && _gpIsEquippedItem(row->itemId)) {

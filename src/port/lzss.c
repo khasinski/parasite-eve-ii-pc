@@ -13,6 +13,9 @@
 #include "fs.h"
 
 #include <stdint.h>
+#include <stdio.h>
+
+#include "port/psyq_compat.h"
 
 /* Saved token state; defined in fs.c, private to the decoder. */
 extern s16 gFsLzssTokenValue;
@@ -23,6 +26,43 @@ extern s32 gFsLzssMatchReadIndex;
 u8 gFsLzssRing[256];
 
 enum { RING_MASK = 255, MIN_MATCH_EXTRA = 1 };
+
+extern u_long _gFsImageUploadBuffer[0x460];
+
+/* End of the object the cursor writes into: PS1 RAM or the image upload buffer. A
+ * damaged stream may decode past it; those bytes are dropped (and reported once)
+ * while the input is still consumed exactly as before. */
+static const u8* _lzssOutputLimit(const u8* out)
+{
+    const u8* ram    = gHostRam;
+    const u8* upload = (const u8*)_gFsImageUploadBuffer;
+    if (out >= ram && out < ram + sizeof(gHostRam)) {
+        return ram + sizeof(gHostRam);
+    }
+    if (out >= upload && out < upload + sizeof(_gFsImageUploadBuffer)) {
+        return upload + sizeof(_gFsImageUploadBuffer);
+    }
+    return NULL;
+}
+
+static void _lzssReportOverrun(void)
+{
+    static int reported;
+    if (!reported) {
+        reported = 1;
+        fprintf(stderr, "[fs] compressed data decodes past its destination; the excess is dropped\n");
+    }
+}
+
+#define PUT(b)                                     \
+    do {                                           \
+        if (limit == NULL || out < limit) {        \
+            *out = (b);                            \
+        } else if (out == limit) {                 \
+            _lzssReportOverrun();                  \
+        }                                          \
+        out++;                                     \
+    } while (0)
 
 void fsDecompressStream(void)
 {
@@ -39,6 +79,7 @@ void fsDecompressStream(void)
     s32       len;
     u32       a;
     uintptr_t resume = (uintptr_t)gFsLzssResumeAddress;
+    const u8* limit  = _lzssOutputLimit(out);
 
     gFsLzssResumeAddress = NULL;
 
@@ -96,7 +137,7 @@ r2:
         tok |= (s32)a;
     }
     gFsLzssRing[ring] = (u8)tok;
-    *out++ = (u8)tok;
+    PUT((u8)tok);
     ring = (ring + 1) & RING_MASK;
     goto read_flag;
 
@@ -145,7 +186,7 @@ r6:
     do {
         u8 b = gFsLzssRing[idx & RING_MASK];
         gFsLzssRing[ring] = b;
-        *out++ = b;
+        PUT(b);
         ring = (ring + 1) & RING_MASK;
         idx++;
     } while (--len >= 0);
@@ -175,6 +216,7 @@ void fsDecompressImagePayload(void)
     u32       byte = 0;
     s32       bits = 0;
     u32       ring = 1;
+    const u8* limit = _lzssOutputLimit(out);
 
     /* Read n bits (n <= 8), MSB first, eagerly fetching the next byte after a
      * full value as the handwritten routine does. */
@@ -204,7 +246,7 @@ void fsDecompressImagePayload(void)
                 v = (v << need) | (s32)a;
             }
             gFsLzssRing[ring] = (u8)v;
-            *out++ = (u8)v;
+            PUT((u8)v);
             ring = (ring + 1) & RING_MASK;
             continue;
         }
@@ -241,7 +283,7 @@ void fsDecompressImagePayload(void)
         for (s32 len = v + MIN_MATCH_EXTRA; len >= 0; len--) {
             u8 b = gFsLzssRing[idx & RING_MASK];
             gFsLzssRing[ring] = b;
-            *out++ = b;
+            PUT(b);
             ring = (ring + 1) & RING_MASK;
             idx++;
         }

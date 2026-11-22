@@ -333,6 +333,9 @@ STATIC_ASSERT_SIZEOF(TaskSpawnArg, 4);
 
 #ifdef __psyz
 #include "port/task_args.h"
+#define TASK_ARG_WORD(arg) TaskArg_Word(arg)
+#else
+#define TASK_ARG_WORD(arg) ((arg).unsignedValue)
 #endif
 
 /// A task's message table entry; defined with the dispatcher in `gameplay/message.h`.

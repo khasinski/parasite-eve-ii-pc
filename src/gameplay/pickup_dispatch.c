@@ -283,8 +283,8 @@ void itemMenuDrawTaskPrompt(UiObject* object, const Task* task)
 
     // Small payloads are catalog selectors; larger words encode borrowed text addresses.
     promptPayload = task->spawnArg1;
-    if (promptPayload.value != 0) {
-        if (promptPayload.unsignedValue > ITEM_MENU_PROMPT_INLINE_VALUE_MAX) {
+    if (TASK_ARG_WORD(promptPayload) != 0) {
+        if (TASK_ARG_WORD(promptPayload) > ITEM_MENU_PROMPT_INLINE_VALUE_MAX) {
             _itemMenuDrawTwoLinePrompt(object, promptPayload.pointer);
         } else if ((u32)(promptPayload.value - ITEM_TEXT_PACKED_ID_FIRST) < (u32)ITEM_MENU_PROMPT_ABILITY_ID_COUNT) {
             itemMenuDrawAbilityDescription(object, promptPayload.value);

@@ -11,6 +11,7 @@
 #include "common.h"
 #ifdef __psyz
 #include "port/cap_asset.h"
+#include <stdio.h>
 #endif
 
 #include "cd_types.h"
@@ -465,7 +466,24 @@ static void _fsResumeDrawing(u_long* resumeAddress);
                 break;                                                          \
             }                                                                   \
         }                                                                       \
+        FILE_SYSTEM_CLAMP_MISSING_FOLDER(requestedId, index);                   \
     } while (0)
+
+#ifdef __psyz
+// A missing ID leaves the active count, which is past the table when it is full;
+// stay inside it (the PS1 read whatever followed) and say which folder was missing.
+#define FILE_SYSTEM_CLAMP_MISSING_FOLDER(requestedId, index)                                         \
+    do {                                                                                             \
+        if ((u16)(index) >= _gFsStageFolderCount) {                                                  \
+            fprintf(stderr, "[fs] folder %u is not in the stage folder list\n", (unsigned)(requestedId)); \
+            if ((u16)(index) >= FILE_SYSTEM_STAGE_FOLDER_CAPACITY) {                                 \
+                (index) = FILE_SYSTEM_STAGE_FOLDER_CAPACITY - 1;                                     \
+            }                                                                                        \
+        }                                                                                            \
+    } while (0)
+#else
+#define FILE_SYSTEM_CLAMP_MISSING_FOLDER(requestedId, index) ((void)0)
+#endif
 
 /// Unused initialized word; its original role is unproven.
 static s32 D_8005EBC0 = 0;
@@ -679,7 +697,12 @@ s32 fsLoadFile(const FsFileLoadKey* fileKey, s32 loadMode, s32 imageXPageOffset,
                 break;
         }
     } else {
+#ifdef __psyz
+        // File indices are 0..99; a larger one would read past the table (0 skips the load).
+        absoluteSector = fileKey->fileIndex < ARRAY_SIZE(_gFsFolderFileSectors) ? _gFsFolderFileSectors[fileKey->fileIndex] + gFsStageCdfBaseSectors[fileKey->stage] : 0;
+#else
         absoluteSector = _gFsFolderFileSectors[fileKey->fileIndex] + gFsStageCdfBaseSectors[fileKey->stage];
+#endif
     }
 
     // Retain byte-sized image relocation options before dispatching the load policy.
@@ -1281,8 +1304,22 @@ void fsBuildFolderTables(s32 stage, s32 fileGroup, s32 folderIndex)
         fileFolder                = folderTable + (folderTableIndex & 0xFFFF);
     }
     for (;;) {
+#ifdef __psyz
+        if ((entryIndex & 0xFFFF) >= FILE_SYSTEM_CDF_FILE_LIST_CAPACITY) {
+            fprintf(stderr, "[fs] folder %u file list has no terminator\n", (unsigned)folderId);
+            break;
+        }
+#endif
         fileSectorOffset = fileList[entryIndex & 0xFFFF].sectorOffset;
         if (fileSectorOffset != 0) {
+#ifdef __psyz
+            if (fileList[entryIndex & 0xFFFF].fileId >= ARRAY_SIZE(_gFsFolderFileSectors)) {
+                fprintf(stderr, "[fs] folder %u lists file %u past the file table\n", (unsigned)folderId,
+                        (unsigned)fileList[entryIndex & 0xFFFF].fileId);
+                entryIndex += 1;
+                continue;
+            }
+#endif
             fileSectors[fileList[entryIndex & 0xFFFF].fileId] = fileSectorOffset + fileFolder->sectorOffset;
             entryIndex                                       += 1;
         } else {
@@ -2231,6 +2268,14 @@ void fsInitFolderTable(s32 unusedStageIndex)
         if (folderEntry->sectorCount == FILE_SYSTEM_CDF_FOLDER_LIST_TERMINATOR) {
             return;
         }
+#ifdef __psyz
+        // A damaged list could run past the sector and the fifty-entry table.
+        if (_gFsStageFolderCount >= FILE_SYSTEM_STAGE_FOLDER_CAPACITY ||
+            folderEntry >= gFsSectorBuffers.sector.folderList.entries + FILE_SYSTEM_CDF_FOLDER_LIST_CAPACITY) {
+            fprintf(stderr, "[fs] stage folder list has no terminator within %d folders\n", (int)_gFsStageFolderCount);
+            return;
+        }
+#endif
 
         _gFsStageFolders[_gFsStageFolderCount].folderId     = folderEntry->folderId;
         _gFsStageFolders[_gFsStageFolderCount].sectorOffset = sectorOffset;

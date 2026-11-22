@@ -151,8 +151,8 @@ u8 gItemMenuReleasePeHelpText[] = "Release Parasite Energy.";
         const u8* secondLine;                                                                                                                                                                                                                                                              \
         u32       textColorRgb;                                                                                                                                                                                                                                                            \
                                                                                                                                                                                                                                                                                            \
-        if ((payloadArg).value != 0) {                                                                                                                                                                                                                                                     \
-            if ((payloadArg).unsignedValue > ITEM_MENU_PROMPT_INLINE_VALUE_MAX) {                                                                                                                                                                                                          \
+        if (TASK_ARG_WORD((payloadArg)) != 0) {                                                                                                                                                                                                                                             \
+            if (TASK_ARG_WORD((payloadArg)) > ITEM_MENU_PROMPT_INLINE_VALUE_MAX) {                                                                                                                                                                                                         \
                 textColorRgb = uiGetTextColor((objectArg), USER_INTERFACE_TEXT_COLOR_NORMAL);                                                                                                                                                                                              \
                 textDrawUiLine((objectArg), (objectArg)->panel.contentLeft.signedValue + ITEM_MENU_PROMPT_LEFT_INSET_PIXELS, (objectArg)->panel.contentTop.signedValue + ITEM_MENU_PROMPT_ROW_HEIGHT_PIXELS, (payloadArg).pointer, textColorRgb, TEXT_DRAW_OUTLINED, TEXT_ALIGNMENT_LEFT); \
                 secondLine = textSkipLines((payloadArg).pointer, 1);                                                                                                                                                                                                                       \
@@ -327,7 +327,7 @@ void itemMenuDrawItemIcon(const UiObject* object, s32 x, s32 y, s32 itemId, s32 
             textureU      = (abilityIndex % 3) * 16 + 0xB0;
             textureV      = (abilityIndex / 3) * 16 + 0x80;
             paletteClut   = getClut((abilityIndex / 3) * 16 + 0x40, 0xF0);
-        } else if ((gItemDescriptors[itemId].classification & ITEM_SUBTYPE_MASK) == ITEM_SUBTYPE_MEDICINE) {
+        } else if ((ITEM_ROW_DESCRIPTOR(itemId)->classification & ITEM_SUBTYPE_MASK) == ITEM_SUBTYPE_MEDICINE) {
             paletteIndex  = ITEM_MENU_ICON_PALETTE_MEDICINE;
             categoryIndex = ITEM_MENU_ICON_CATEGORY_MEDICINE;
         } else {
@@ -2292,7 +2292,7 @@ void itemMenuDrawArmorAttachmentRow(UiList* list, UiObject* object)
         if (orderMode == rowInputEnabled) {
             if (padCheckButtons(0, PAD_BUTTON_QUERY_PRESSED, gPadConfirmButtonMask) != 0) {
                 const ItemDesc* selectedDescriptor;
-                selectedDescriptor = &gItemDescriptors[gItemMenuSelectedRow->itemId];
+                selectedDescriptor = ITEM_ROW_DESCRIPTOR(gItemMenuSelectedRow->itemId);
                 if (!(selectedDescriptor->flags & ITEM_FLAG_NO_ATTACHMENT)) {
                     sndEvtRequestScriptStart(SOUND_MENU_CONFIRM, 0, 0);
                     if (gItemMenuSelectedRow->itemId != INVENTORY_ITEM_NONE) {
@@ -2738,7 +2738,7 @@ InventoryItemRow* inventoryFindNthAttachmentCandidate(const InventoryItemRange* 
     foundRow = NULL;
     row      = &row[range->firstRow];
     for (rowIndex = 0; rowIndex < range->rowCount; rowIndex++, row++) {
-        if ((gItemDescriptors[row->itemId].flags & ITEM_FLAG_NO_ATTACHMENT) || (row->itemId == INVENTORY_ITEM_NONE)) {
+        if ((ITEM_ROW_DESCRIPTOR(row->itemId)->flags & ITEM_FLAG_NO_ATTACHMENT) || (row->itemId == INVENTORY_ITEM_NONE)) {
             continue;
         }
         if ((u8)(row->itemId + EQUIPMENT_WEAPON_ITEM_FIRST) < ITEM_MENU_WEAPON_ITEM_COUNT && _equipmentIsActiveItem(row->itemId)) {

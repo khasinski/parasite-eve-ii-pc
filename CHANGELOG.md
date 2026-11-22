@@ -8,6 +8,9 @@
 - Reject damaged or edited data instead of reading past tables: grid tables whose disc addresses leave their cells, task banks past the table, negative demo scenes, and save previews with unknown modes or save points. The save editor no longer puts key-item ids into carried item rows.
 - PsyZ: overlapping VRAM moves no longer copy a texture onto itself (undefined on Vulkan and Direct3D 12), the audio lock no longer releases a mutex it never took, and corrupted packet lengths and out-of-range OpenGL image transfers are dropped. Report menu frames that overrun their primitive arena in the log.
 - Fix the log redirect leaving descriptor 2 free for the next opened file when the log cannot be created, and the widescreen fallback rebuilding a 16 MB atlas every frame after a failed upload.
+- Tell item-menu prompt text from item and ability ids by the whole 64-bit pointer: about one text address in 65,536 has low bits that look like an id, and the prompt then showed the wrong description or none. Menus that read a key item (row ids 0xC0 and up) through the ordinary item table now read the key-item table, as the PS1 layout did, instead of past the array.
+- Stop compressed disc data at the end of its destination, folder lists at the end of the 50-entry table, and file lists at the end of their sector; report task arguments that would lose their upper 32 bits.
+- PsyZ: movie audio (XA) reads each sector at its own position instead of wherever the video reader left the shared file, `CdRead` honours the track's offset in the image, GPU fills are clipped to VRAM before the high-resolution copy, and a hot SPU reset no longer puts 512 KB on the stack.
 
 ## 0.3.7
 

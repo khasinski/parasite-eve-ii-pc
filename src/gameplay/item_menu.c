@@ -360,7 +360,7 @@ static inline s32 _itemMenuCheckTransferRestriction(s32 itemId, s32 battleFieldM
     s32 restricted;
 
     restricted = 0;
-    if (gItemDescriptors[itemId].flags & ITEM_FLAG_NO_DISCARD) {
+    if (ITEM_ROW_DESCRIPTOR(itemId)->flags & ITEM_FLAG_NO_DISCARD) {
         restricted = battleFieldMode == ITEM_MENU_PANE_MODE_BATTLE_FIELD;
     }
     if ((_gItemMenuTransferPlaceKind == ITEM_MENU_M93R_RESTRICTED_CONTAINER_KIND) && (itemId == ITEM_MENU_M93R_ITEM_ID) && (gMcSaveData[MEMORY_CARD_SAVE_LIVE].state.location.stage == GAME_STAGE_AKROPOLIS)) {

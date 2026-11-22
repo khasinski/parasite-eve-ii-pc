@@ -390,6 +390,17 @@ enum { ITEM_KEY_DESCRIPTOR_COUNT = 0x80 };
 /// enforce this bound; ids 0x180..0x2FF are outside this object's extent.
 extern ItemDesc gItemKeyDescriptors[ITEM_KEY_DESCRIPTOR_COUNT];
 
+/// Descriptor for a one-byte inventory row id. On the PS1 the key table follows the
+/// ordinary one, so `gItemDescriptors[id]` with id 0xC0..0xFF read key rows 0..0x3F;
+/// the host arrays are separate objects, so the same rows are selected explicitly.
+#ifdef __psyz
+#define ITEM_ROW_DESCRIPTOR(itemId)                                                    \
+    ((u32)(u8)(itemId) < ITEM_DESCRIPTOR_COUNT ? &gItemDescriptors[(u8)(itemId)]      \
+                                               : &gItemKeyDescriptors[(u8)(itemId) - ITEM_DESCRIPTOR_COUNT])
+#else
+#define ITEM_ROW_DESCRIPTOR(itemId) (&gItemDescriptors[itemId])
+#endif
+
 /// Primary weapon-load capacities and accepted consumables.
 ///
 /// Indexed by weapon item id minus EQUIPMENT_WEAPON_ITEM_FIRST (0..31),
