@@ -33,6 +33,14 @@ void* memMalloc(size_t size,bool aux)
     memset(result,0xa5,size);
     return result;
 }
+/* The static native decode buffer replaces a decode reservation, which is released at once. */
+static unsigned auxFrees;
+void memFreeFromHeap(void* block,bool aux)
+{
+    CHECK(aux);
+    CHECK(block!=NULL);
+    ++auxFrees;
+}
 s16 streamFindMovieSlot(const GameLocationKey* key,s32 sub,s32 required) {(void)key;(void)sub;(void)required;++movieQueries;return -1;}
 void DecDCTvlcBuild(u_short* table) {++vlcBuilds;memset(table,0x6b,STREAM_VLC_TABLE_BYTES);}
 int main(void)
