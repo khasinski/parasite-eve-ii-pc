@@ -36,9 +36,23 @@ static int watchCount;
 static char version[160] = "unknown", osLine[256] = "unknown", imageLine[PATH_BYTES + 64];
 static char session[40], startedLine[64];
 static char reportPath[PATH_BYTES], markerPath[PATH_BYTES], logPath[PATH_BYTES];
-static volatile sig_atomic_t inHandler;
-/* One report per process: a sanitizer's handler that runs after ours may abort(), which must not replace it. */
-static volatile sig_atomic_t reported;
+/* Set while this thread runs a handler: a fault inside the handler must not report again. */
+static _Thread_local volatile sig_atomic_t inHandler;
+/* One report per process: a sanitizer's handler that runs after ours may abort(), which must not replace it. The first
+ * crashing thread claims the report; another thread that crashes meanwhile waits for it to finish rather than
+ * terminating the process half way through the report. */
+static volatile int reportClaimed, reportDone;
+/* While set, addresses are written without symbols. Symbolizing can take the dynamic loader's lock, which the
+ * crashed program may hold, so the report is complete before the first lookup. */
+static int rawAddresses;
+
+static int claimReport(void) { return __atomic_exchange_n(&reportClaimed, 1, __ATOMIC_ACQ_REL) == 0; }
+static void finishReport(void) { __atomic_store_n(&reportDone, 1, __ATOMIC_RELEASE); }
+static void sleepBriefly(void);
+/* Waits up to about five seconds for the thread that claimed the report. */
+static void awaitReport(void) {
+    for (int i = 0; i < 500 && !__atomic_load_n(&reportDone, __ATOMIC_ACQUIRE); i++) sleepBriefly();
+}
 static int installed;
 
 #if defined(__aarch64__) || defined(_M_ARM64)
@@ -256,6 +270,9 @@ static void writeReport(const CrashInfo* c, Sink err) {
 #endif
     }
     if (report != NO_SINK) {
+#ifndef _WIN32
+        rawAddresses = 1;
+#endif
         putHeader(report, c);
         putWatches(report);
         putFrames(report, c);
@@ -266,10 +283,16 @@ static void writeReport(const CrashInfo* c, Sink err) {
         put(marker, reportPath); put(marker, "\n");
         if (marker != NO_SINK) CloseHandle(marker);
 #else
-        close(report);
         Sink marker = open(markerPath, O_WRONLY | O_CREAT | O_TRUNC, 0644);
         put(marker, reportPath); put(marker, "\n");
         if (marker != NO_SINK) close(marker);
+        /* Everything above is on disk; a lookup that blocks now loses only the symbols. */
+        rawAddresses = 0;
+        put(report, "\nSymbols:\n");
+        if (c->pc) { put(report, "pc: "); putCode(report, (void*)(uintptr_t)c->pc); }
+        if (c->lr) { put(report, "lr: "); putCode(report, (void*)(uintptr_t)c->lr); }
+        putFrames(report, c);
+        close(report);
 #endif
     }
     /* The normal log (or the terminal): a marker line, then the same report without the log tail. */
@@ -292,8 +315,11 @@ enum { FATAL_COUNT = sizeof fatalSignals / sizeof fatalSignals[0] };
 static struct sigaction previous[FATAL_COUNT];
 static char altStack[256 * 1024];
 
+static void sleepBriefly(void) { struct timespec t = { 0, 10 * 1000 * 1000 }; nanosleep(&t, NULL); }
+
 static void putCode(Sink s, void* address) {
     putx(s, (uint64_t)(uintptr_t)address);
+    if (rawAddresses) { put(s, "\n"); return; }
     put(s, "  ");
     if (!address) { put(s, "(null)\n"); return; }
     void* one[1] = { address };
@@ -304,7 +330,8 @@ static void putFrames(Sink s, const CrashInfo* c) {
     put(s, "\nBacktrace (");
     putd(s, c->frameCount);
     put(s, " frames, innermost first; the crash handler's own frames come first):\n");
-    backtrace_symbols_fd(c->frames, c->frameCount, s);
+    if (!rawAddresses) { backtrace_symbols_fd(c->frames, c->frameCount, s); return; }
+    for (int i = 0; i < c->frameCount; i++) { put(s, "  #"); putd(s, i); put(s, " "); putCode(s, c->frames[i]); }
 }
 
 static void putLogTail(Sink s) {
@@ -368,6 +395,8 @@ static void crashHandler(int sig, siginfo_t* info, void* context) {
         return;
     }
     inHandler = 1;
+    const int reporter = claimReport();
+    if (!reporter) awaitReport();
     static void* frames[MAX_FRAMES];
     static char what[96];
     CrashInfo c = { 0 };
@@ -401,10 +430,10 @@ static void crashHandler(int sig, siginfo_t* info, void* context) {
     if (uc) { c.pc = uc->uc_mcontext.pc; c.lr = uc->uc_mcontext.regs[30]; c.sp = uc->uc_mcontext.sp; }
 #endif
     c.frames = frames;
-    if (!reported) {
-        reported = 1;
+    if (reporter) {
         c.frameCount = backtrace(frames, MAX_FRAMES);
         writeReport(&c, STDERR_FILENO);
+        finishReport();
     }
 
     /* Hand the signal on as if this handler were not installed: to the default action (core dump, the OS crash
@@ -459,6 +488,8 @@ void peCrashInstall(const char* text) {
 
 #else
 /* ---- Windows ---- */
+static void sleepBriefly(void) { Sleep(10); }
+
 static void putCode(Sink s, void* address) {
     putx(s, (uint64_t)(uintptr_t)address);
     HMODULE module = NULL;
@@ -517,12 +548,15 @@ static int walkStack(const CONTEXT* from, void** frames, int max) {
     int n = 0;
 #if defined(_M_X64) || defined(__x86_64__)
     CONTEXT ctx = *from;
+    /* The committed part of this thread's stack; reading outside it would fault inside the filter. */
+    const NT_TIB* tib = (const NT_TIB*)NtCurrentTeb();
+    const DWORD64 low = (DWORD64)(uintptr_t)tib->StackLimit, high = (DWORD64)(uintptr_t)tib->StackBase;
     while (n < max && ctx.Rip) {
         frames[n++] = (void*)(uintptr_t)ctx.Rip;
         DWORD64 base = 0;
         PRUNTIME_FUNCTION fn = RtlLookupFunctionEntry(ctx.Rip, &base, NULL);
-        if (!fn) { /* leaf: the return address is at the stack pointer */
-            if (!ctx.Rsp) break;
+        if (!fn) { /* leaf: the return address is at the stack pointer, if that is still on this thread's stack */
+            if (ctx.Rsp < low || ctx.Rsp > high - 8) break;
             ctx.Rip = *(DWORD64*)(uintptr_t)ctx.Rsp;
             ctx.Rsp += 8;
             continue;
@@ -584,6 +618,8 @@ static const char* exceptionName(DWORD code) {
 static LONG WINAPI exceptionFilter(EXCEPTION_POINTERS* ep) {
     if (inHandler) return EXCEPTION_CONTINUE_SEARCH;
     inHandler = 1;
+    const int reporter = claimReport();
+    if (!reporter) awaitReport();
     static char what[96];
     DWORD code = ep && ep->ExceptionRecord ? ep->ExceptionRecord->ExceptionCode : 0;
     const char* name = exceptionName(code);
@@ -605,7 +641,7 @@ static LONG WINAPI exceptionFilter(EXCEPTION_POINTERS* ep) {
             address = ep->ExceptionRecord->ExceptionInformation[1];
         }
     }
-    if (!reported) { reported = 1; reportWindows(what, code, detail, hasAddress, address, ep); }
+    if (reporter) { reportWindows(what, code, detail, hasAddress, address, ep); finishReport(); }
     inHandler = 0;
     return previousFilter ? previousFilter(ep) : EXCEPTION_CONTINUE_SEARCH;
 }
@@ -614,7 +650,8 @@ static void abortHandler(int sig) {
     (void)sig;
     if (inHandler) return;
     inHandler = 1;
-    if (!reported) { reported = 1; reportWindows("SIGABRT (abort)", SIGABRT, NULL, 0, 0, NULL); }
+    if (claimReport()) { reportWindows("SIGABRT (abort)", SIGABRT, NULL, 0, 0, NULL); finishReport(); }
+    else awaitReport();
     inHandler = 0;
     /* Returning lets abort() terminate the process (exit code 3). */
 }
@@ -625,7 +662,8 @@ static void invalidParameter(const wchar_t* expression, const wchar_t* function,
     (void)expression; (void)function; (void)file; (void)line; (void)reserved;
     if (inHandler) return;
     inHandler = 1;
-    if (!reported) reportWindows("invalid parameter passed to a C runtime function", 0, NULL, 0, 0, NULL);
+    if (claimReport()) reportWindows("invalid parameter passed to a C runtime function", 0, NULL, 0, 0, NULL);
+    else awaitReport();
     TerminateProcess(GetCurrentProcess(), 0xC000000D);
 }
 #endif

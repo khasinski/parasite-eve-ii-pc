@@ -124,7 +124,8 @@ static void saveOptions(unsigned scale) {
     fprintf(f,"hd_backgrounds=%d\nhd_background_path=%s\n",hdEnabled,hdPackPath);
     for(unsigned i=0;i<16;i++) fprintf(f,"key%u=%d\n",i,Psyz_GetKeyboardBinding_SDL3(i));
     int failed=ferror(f); if(fclose(f)) failed=1;
-    if(failed || rename(temp,configPath)) snprintf(statusText,sizeof statusText,"Could not save preferences.");
+    /* rename() cannot replace an existing file on Windows; SDL_RenamePath can. */
+    if(failed || !SDL_RenamePath(temp,configPath)) { remove(temp); snprintf(statusText,sizeof statusText,"Could not save preferences."); }
 }
 
 static unsigned loadOptions(void) {
@@ -193,9 +194,19 @@ static void openLog(int argc,char** argv) {
     }
     else return;
     fflush(stdout);fflush(stderr);
+#ifndef _WIN32
+    /* Open the log before touching descriptor 2: a failed freopen() closes it, and the next open() (a save being
+     * written) would then receive it and with it everything written to stderr, crash reports included. */
+    FILE* log=fopen(logPath,"w"); /* the SDK headers declare their own open() */
+    if(!log) { logPath[0]=0;return; }
+    int moved=dup2(fileno(log),STDERR_FILENO)>=0;
+    fclose(log);
+    if(!moved) { logPath[0]=0;return; }
+#else
     if(!freopen(logPath,"w",stderr)) { /* stderr is gone; keep going without a log */
         logPath[0]=0;return;
     }
+#endif
     setvbuf(stderr,NULL,_IONBF,0);
 #ifndef _WIN32
     dup2(STDERR_FILENO,STDOUT_FILENO);
@@ -309,8 +320,8 @@ static int acceptPath(const char* path,int expected) {
     const char* ext=strrchr(path,'.');
     if(ext && !SDL_strcasecmp(ext,".bin")) {
         char stable[4096]; snprintf(stable,sizeof stable,"%s/disc%d.cue",configDir,number);
-        if(rename(cue,stable)) {
-            snprintf(statusText,sizeof statusText,"Cannot save %s: %s.",stable,strerror(errno));
+        if(!SDL_RenamePath(cue,stable)) {
+            snprintf(statusText,sizeof statusText,"Cannot save %s: %s.",stable,SDL_GetError());
             fprintf(stderr,"[disc] %s\n",statusText);
             return 0;
         }

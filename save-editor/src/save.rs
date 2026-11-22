@@ -598,6 +598,10 @@ impl SaveImage {
         if item_id == 0 {
             bail!("item id 0 is the empty-row marker");
         }
+        // The game reads carried rows through its 0xC0-entry item table; key items are collection bits instead.
+        if item_id >= 0xC0 {
+            bail!("{item_id:#04x} is not a carried item (0x01..0xBF); key items are set with the key-item list");
+        }
         let qty = qty.max(1);
         let rows = self.carried_row_indices();
         if rows.is_empty() {
@@ -1020,6 +1024,10 @@ mod tests {
         assert!(save.give_item(0x82, 1).is_err(), "window is full");
         assert_eq!(save.remove_item(0x01), 2);
         assert!(save.give_item(0x82, 1).is_ok());
+        assert!(
+            save.give_item(0xC0, 1).is_err(),
+            "key-item ids are not carried items"
+        );
         // Rows outside the window are untouched.
         assert_eq!(save.item_row(4), ItemRow::default());
     }

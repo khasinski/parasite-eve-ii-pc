@@ -1294,17 +1294,22 @@ void effectLineTaskA3(Task* task)
             work->move.vy = (RANDOM_LCG_DRAW() & 0x1FF) + 0x200;
             RANDOM_LCG_ADVANCE();
             work->move.vz = 0x80 - (RANDOM_LCG_DRAW() & 0xFF);
+            /* Rotate the launch direction through the muzzle once. The muzzle is the flash's coordinate, which no
+             * longer changes, and the flash can die first: it keeps ageing while effects are paused and these lines
+             * do not. The PS1 read its freed matrix every frame; the host keeps the rotated direction instead. */
+            gte_SetRotMatrix(&work->parent->coord);
+            gte_ldv0(&work->move);
+            gte_rtv0();
+            gte_stsv(&work->move);
+            work->parent  = NULL;
             task->state   = EFFECT_DRAW_TASK_ACTIVE;
         }
         block                  = SCRATCH_STACK_RESERVE_BLOCK(EffectLineScratch);
         block->endpoints[0].vx = coord->workm.t[0];
         block->endpoints[0].vy = coord->workm.t[1];
         block->endpoints[0].vz = coord->workm.t[2];
-        // Rotate the launch direction into the view frame and lengthen it with age.
-        gte_SetRotMatrix(&work->parent->coord);
-        gte_ldv0(&work->move);
-        gte_rtv0();
-        gte_stsv(&block->endpoints[1]);
+        // Rotate the muzzle-frame launch direction into the view frame and lengthen it with age.
+        block->endpoints[1] = work->move;
         gte_SetRotMatrix(&gGfxViewCoord.workm);
         gte_ldv0(&block->endpoints[1]);
         gte_rtv0();

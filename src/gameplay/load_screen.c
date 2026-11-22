@@ -312,7 +312,13 @@ void areaStartRoomRuntime(s32 skipViewGate)
     gameSetTaskSlot(taskSpawn(ROOM_EFFECT_TASK_BANK, ROOM_EFFECT_TASK_TYPE, 0, 0), GAME_TASK_SLOT_ROOM_EFFECT);
     taskSpawn(CAP_CONTROL_TASK_BANK, CAP_CONTROL_TASK_TYPE, 0, 0);
     taskSpawn(OBJECT_TASK_ROOM_TASK_BANK, OBJECT_TASK_ROOM_TASK_TYPE, 0, 0);
-    if ((gMcSaveData[MEMORY_CARD_SAVE_LIVE].state.demoScene != DISPLAY_DEMO_NONE) && (gMcSaveData[MEMORY_CARD_SAVE_LIVE].state.demoScene != AREA_ROOM_DEMO_NO_START_TASK)) {
+    // The scene number names a task bank. It comes back from the memory card: a negative value would make taskSpawn
+    // take the selector for a descriptor pointer (taskSpawn rejects banks past the table).
+    if ((gMcSaveData[MEMORY_CARD_SAVE_LIVE].state.demoScene != DISPLAY_DEMO_NONE) && (gMcSaveData[MEMORY_CARD_SAVE_LIVE].state.demoScene != AREA_ROOM_DEMO_NO_START_TASK)
+#ifdef __psyz
+        && gMcSaveData[MEMORY_CARD_SAVE_LIVE].state.demoScene > 0
+#endif
+    ) {
         taskSpawn((s32)gMcSaveData[MEMORY_CARD_SAVE_LIVE].state.demoScene, AREA_ROOM_DEMO_START_TASK_TYPE, 0, 0);
     }
     areaSpawnRoomObjects(location);

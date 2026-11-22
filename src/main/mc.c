@@ -801,6 +801,14 @@ UiList                   gMcLoadFileList             = { _gMcLoadFileRowCallback
 static UiListRowCallback _gMcSaveFileRowCallbacks[1] = { mcMenuDrawSaveFileRow };
 UiList                   gMcSaveFileList             = { _gMcSaveFileRowCallbacks, MEMORY_CARD_DIRECTORY_CAPACITY, MEMORY_CARD_DIRECTORY_CAPACITY, 0, USER_INTERFACE_LIST_PREVIEW_ROW_HEIGHT };
 
+#ifdef __psyz
+/// A save point the label table does not have (a damaged or edited preview) is shown as the first one.
+#define MEMORY_CARD_PREVIEW_SAVE_POINT_INDEX(savePoint) \
+    ((u8)(savePoint) < MEMORY_CARD_SAVE_POINT_PREVIEW_LABEL_COUNT ? (s8)(savePoint) : 0)
+#else
+#define MEMORY_CARD_PREVIEW_SAVE_POINT_INDEX(savePoint) ((s8)(savePoint))
+#endif
+
 /// Preview labels indexed unchecked by gameMode 0..3: Replay, Bounty, Scavenger, Nightmare.
 ///
 /// Displayed only for a completed run whose save point is not Opening.
@@ -2866,18 +2874,22 @@ void mcDrawFilePreview(UiObject* panelObject, const McWork* work, s32 directoryI
             textDrawString(&detailRequest, textItoaUnsigned(numberScratch.text, preview->clearCount));
             if ((s8)preview->savePoint != MEMORY_CARD_SAVE_POINT_OPENING) {
                 MEMORY_CARD_INIT_PREVIEW_TEXT_REQUEST(statRequest, panelObject->panel.contentOriginX.unsignedValue + x, panelObject->panel.contentOriginY.unsignedValue + 8 + y, panelObject->panel.otIndex.signedValue + 1, MEMORY_CARD_PREVIEW_LABEL_RGB, TEXT_GLYPH_TABLE_SMALL, TEXT_ALIGNMENT_RIGHT, TEXT_DRAW_OUTLINED);
-                textDrawString(&statRequest, _gMcPreviewModeLabels[preview->gameMode]);
+#ifdef __psyz
+                // The preview comes from the card: name only modes the table has.
+                if ((u32)preview->gameMode < ARRAY_SIZE(_gMcPreviewModeLabels))
+#endif
+                    textDrawString(&statRequest, _gMcPreviewModeLabels[preview->gameMode]);
             }
         }
         x = originX + panelObject->panel.contentLeft.signedValue + 4;
         y = originY + panelObject->panel.contentTop.signedValue + 0x11;
-        textDrawUiLine(panelObject, x, y, gMcSavePointPreviewLabels[(s8)preview->savePoint], textColorRgb, TEXT_DRAW_OUTLINED, TEXT_ALIGNMENT_LEFT);
+        textDrawUiLine(panelObject, x, y, gMcSavePointPreviewLabels[MEMORY_CARD_PREVIEW_SAVE_POINT_INDEX(preview->savePoint)], textColorRgb, TEXT_DRAW_OUTLINED, TEXT_ALIGNMENT_LEFT);
         // Reuse the CLEAR request storage for the parenthesized save number.
         saveLabelScratch.text[0] = 0;
         textAppendString(saveLabelScratch.text, gMcPreviewSaveNumberPrefix);
         textAppendString(saveLabelScratch.text, textItoaSigned(numberScratch.text, preview->saveNumber));
         textAppendString(saveLabelScratch.text, (const u8*)_gMcTextCloseParen);
-        MEMORY_CARD_INIT_PREVIEW_TEXT_REQUEST(detailRequest, panelObject->panel.contentOriginX.unsignedValue + (x + textMeasureLineWidth(gMcSavePointPreviewLabels[(s8)preview->savePoint])), panelObject->panel.contentOriginY.unsignedValue + (y - 3), panelObject->panel.otIndex.signedValue + 1, textColorRgb, TEXT_GLYPH_TABLE_LARGE, TEXT_ALIGNMENT_LEFT, TEXT_DRAW_OUTLINED);
+        MEMORY_CARD_INIT_PREVIEW_TEXT_REQUEST(detailRequest, panelObject->panel.contentOriginX.unsignedValue + (x + textMeasureLineWidth(gMcSavePointPreviewLabels[MEMORY_CARD_PREVIEW_SAVE_POINT_INDEX(preview->savePoint)])), panelObject->panel.contentOriginY.unsignedValue + (y - 3), panelObject->panel.otIndex.signedValue + 1, textColorRgb, TEXT_GLYPH_TABLE_LARGE, TEXT_ALIGNMENT_LEFT, TEXT_DRAW_OUTLINED);
         textDrawString(&detailRequest, saveLabelScratch.text);
         textX                    = originX + panelObject->panel.contentLeft.signedValue;
         x                        = textX + 2;

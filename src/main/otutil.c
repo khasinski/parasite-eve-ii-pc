@@ -1,4 +1,8 @@
 #include "display_types.h"
+#ifdef __psyz
+#include <stdio.h>
+#include <stdlib.h>
+#endif
 
 #include <psyz.h>
 #include <libgte.h>
@@ -148,7 +152,33 @@ s32 displayRunTaskFrame(GsOT* unusedOrderingTables, s32 frameStartLines, s32 unu
 #ifdef __psyz
     peForegroundBeginOt(gGpuCurrentOt,1u<<gGpuTaskOrderingTables[display->frameBuffer].length);
 #endif
+#ifdef __psyz
+    const u8* const taskFrameArena = _gDisplayTaskPrimitiveArenaBase;
+    const u8* const taskFrameStart = gGpuPrimCursor;
+#endif
     taskExecList(&gDisplayTaskList);
+#ifdef __psyz
+    // A task that rebinds the arena (opening or closing a menu) starts over; only a frame that kept it is measured.
+    if (_gDisplayTaskPrimitiveArenaBase == taskFrameArena) {
+        // Host packets are larger than the PS1's (16-byte tags); the menus drawing into this arena have no capacity
+        // check. Report the largest frame that ran past its half, which writes into the other half or past the
+        // arena.
+        static s32 reportedBytes;
+        const s32  used = (s32)((const u8*)gGpuPrimCursor - taskFrameStart);
+        if (used > _gDisplayTaskPrimitiveArenaBytes / 2 && used > reportedBytes) {
+            reportedBytes = used;
+            fprintf(stderr, "[display] task frame used %d primitive bytes of a %d-byte half\n", (int)used,
+                    (int)(_gDisplayTaskPrimitiveArenaBytes / 2));
+        }
+        static int traceArena = -1;
+        if (traceArena < 0) traceArena = getenv("PE2_TRACE_ARENA") != NULL;
+        static s32 peak;
+        if (traceArena && used > peak) {
+            peak = used;
+            fprintf(stderr, "[display] task frame primitive peak %d of %d\n", (int)used, (int)(_gDisplayTaskPrimitiveArenaBytes / 2));
+        }
+    }
+#endif
     cdCmdService();
     if (display->mdecActive == 0) {
         DrawSync(0);

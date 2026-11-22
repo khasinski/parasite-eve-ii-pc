@@ -185,6 +185,9 @@ static void _cdCmdReserveSceneBuffers(void)
             queue->decodeBuffer = memMalloc(queue->decodeBufferBytes, true);
 #ifdef __psyz
             if (queue->decodeBuffer != NULL && (u32)queue->decodeBufferBytes <= sizeof(_gNativeSceneDecodeBuffer)) {
+                /* The reservation only proves the game's heap had room; nothing frees the decode buffer, so release
+                 * the block now instead of leaking one per scene. */
+                memFreeFromHeap(queue->decodeBuffer, true);
                 queue->decodeBuffer = _gNativeSceneDecodeBuffer;
             }
 #endif

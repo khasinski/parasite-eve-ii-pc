@@ -322,7 +322,10 @@ static void preparePack(uint64_t key)
  * native VRAM authoritative, including opaque RGB555 zero backgrounds. */
 static void prepareNativePack(uint64_t key)
 {
-    if(packAvailable)return;
+    /* A failed build (no space for the temporary PNG, atlas upload refused) is not retried every frame. */
+    static uint64_t failedKey;
+    static int failed;
+    if(packAvailable || (failed && failedKey==key))return;
     if(Psyz_VideoSetWidescreen(1)!=0)return;
     Psyz_VideoSetWidescreen(0);
     enum { columns=28, cells=columns*15, rows=(cells+15)/16, width=16*68, height=rows*136 };
@@ -343,9 +346,10 @@ static void prepareNativePack(uint64_t key)
     }
     /* The public atlas API takes a filename. Use a private temporary file,
      * remove it immediately after upload, and never install a generated pack. */
-    const char* directory=SDL_GetPrefPath("parasite-eve","parasite-eve-ii");
+    char* directory=SDL_GetPrefPath("parasite-eve","parasite-eve-ii");
     char path[4352];
     int n=directory?snprintf(path,sizeof path,"%snative-wide-%" PRIu64 ".png",directory,SDL_GetTicksNS()):-1;
+    SDL_free(directory);
     int loaded=0;
     if(n>0 && n<(int)sizeof path) {
         if(SDL_SavePNG(atlas,path))loaded=Psyz_GpuLoadSpriteAtlas(key,path)==1;
@@ -355,6 +359,9 @@ static void prepareNativePack(uint64_t key)
     if(loaded) {
         currentPack=(PeBackgroundPack){.key=key,.left=-64,.right=384,.cells=cells};
         packAvailable=1;
+        failed=0;
+    } else {
+        failed=1;failedKey=key;
     }
 }
 

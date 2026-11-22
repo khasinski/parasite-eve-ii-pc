@@ -95,6 +95,8 @@ int peAssetsLoad(struct PeDisc* disc)
          * in place and room tasks also mutate these arrays. Mounting another
          * disc must fill missing bindings without resetting that live state. */
         if (loaded[i]) continue;
+        /* A linker that pads the section (incremental COFF links) leaves all-zero records between ours. */
+        if (!b[i].key || !b[i].dst) { loaded[i] = 1; continue; }
         const PeAssetPart* part = findPart(b[i].key);
         if (!part) { fprintf(stderr, "[assets] no layout for %s\n", b[i].key); wrong++; continue; }
         size_t want = part->op == PE_ASSET_OP_GRID_TABLE ? (size_t)part->size / 4 * sizeof(void*) : part->size;
@@ -138,10 +140,24 @@ int peAssetsLoad(struct PeDisc* disc)
             const uint32_t* words = (const uint32_t*)(const void*)src; /* PS1 addresses; little endian host */
             const int16_t*  cells = (const int16_t*)b[i].aux;
             const int16_t** out = (const int16_t**)b[i].dst;
-            for (uint32_t k = 0; k < part->size / 4; k++) {
+            /* Every address must name a cell of the bound array; check them all before writing any pointer. */
+            const uint32_t base = part->load + part->cellsOffset;
+            const size_t   cellBytes = peAssetBindingBytes(cells);
+            uint32_t       k = 0;
+            for (; k < part->size / 4; k++) {
                 uint32_t w;
                 memcpy(&w, &words[k], 4);
-                out[k] = w ? cells + (w - part->load - part->cellsOffset) / 2 : NULL;
+                if (w && (w < base || ((w - base) & 1) || (cellBytes && (size_t)(w - base) >= cellBytes))) break;
+            }
+            if (k < part->size / 4) {
+                fprintf(stderr, "[assets] %s: grid entry %u does not point into its cells\n", b[i].key, (unsigned)k);
+                wrong++;
+                continue;
+            }
+            for (k = 0; k < part->size / 4; k++) {
+                uint32_t w;
+                memcpy(&w, &words[k], 4);
+                out[k] = w ? cells + (w - base) / 2 : NULL;
             }
         }
         loaded[i] = 1;

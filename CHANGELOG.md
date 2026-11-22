@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Fix saving preferences on Windows: after the first save every later one failed with "Could not save preferences." because Windows cannot rename over an existing file. Choosing a BIN again when its generated CUE already existed failed the same way.
+- Fix a use-after-free in the AS12 and gunblade muzzle sparks when effects pause right after a shot, a double free when a dying model task is killed again, a scene exit that could walk freed actors forever, and a scene decode buffer leaked on every room change.
+- Crash reports: write the report, the log tail and the marker before looking up symbols (which can block on the loader lock), let a second crashing thread wait for the first report instead of cutting it off, and stop the Windows stack walk at the thread's stack.
+- Reject damaged or edited data instead of reading past tables: grid tables whose disc addresses leave their cells, task banks past the table, negative demo scenes, and save previews with unknown modes or save points. The save editor no longer puts key-item ids into carried item rows.
+- PsyZ: overlapping VRAM moves no longer copy a texture onto itself (undefined on Vulkan and Direct3D 12), the audio lock no longer releases a mutex it never took, and corrupted packet lengths and out-of-range OpenGL image transfers are dropped. Report menu frames that overrun their primitive arena in the log.
+- Fix the log redirect leaving descriptor 2 free for the next opened file when the log cannot be created, and the widescreen fallback rebuilding a 16 MB atlas every frame after a failed upload.
+
 ## 0.3.7
 
 - Fix frozen afterimages in camera effects that blend the previous frame (the cafeteria boss death, No.9's helipad scenes): the GPU renderer now sets the PS1 mask bit, so damage readout boxes no longer stay on screen without their digits and models no longer smear over captions. Reproduced on the hidden-Metal renderer with a deterministic route, including the cafeteria boss's transformation (jagged shards along the creature); the helipad caption and Rupert screenshots match the same pattern but those exact scenes were not reached. The OpenGL renderer now stores the real mask bit and supports the same mode.

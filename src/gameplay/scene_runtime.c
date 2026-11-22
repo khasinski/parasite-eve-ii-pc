@@ -4206,6 +4206,30 @@ static s32 _sceneExitPlacedActors(Task* scene, s32 messageId, s32 firstArg, s32 
     if (head == NULL) {
         return 0;
     }
+#ifdef __psyz
+    {
+        // Choose the placed actors before any exit runs. When the ring's first child is itself a placed actor, its
+        // exit unlinks it and the walk below never meets `head` again, reading released siblings forever.
+        enum { SCENE_PLACED_ACTOR_EXIT_MAX = 256 };
+        Task* placed[SCENE_PLACED_ACTOR_EXIT_MAX];
+        s32   count = 0;
+        s32   index;
+        child = head;
+        do {
+            enemy = child->spawnArg2.pointer;
+            bank  = enemy->workType >> SCENE_ACTOR_BANK_SHIFT;
+            if (bank == SCENE_PLACED_ACTOR_BANK && count < SCENE_PLACED_ACTOR_EXIT_MAX) {
+                placed[count++] = child;
+            }
+            child = child->nextSibling;
+        } while (child != head);
+        for (index = 0; index < count; index++) {
+            taskCallExit(placed[index]);
+        }
+        (void)next;
+        return 0;
+    }
+#endif
     child = head;
     do {
         enemy = child->spawnArg2.pointer;

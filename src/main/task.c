@@ -340,6 +340,11 @@ void taskKill(Task* task)
 
     if (task->work != NULL) {
         memFree(task->work);
+#ifdef __psyz
+        // A model task stays allocated through its release countdown, and a second kill through a stored handle in
+        // that window must not free the work again: the PS1 heap tolerated that, the host allocator aborts.
+        task->work = NULL;
+#endif
     }
 
     if (gDisplayState.immediateTaskFree == 0) {
@@ -397,6 +402,12 @@ Task* (taskSpawn)(s32 bank, TaskSpawnArg selector, TaskSpawnArg spawnArg1, TaskS
     TaskDesc* desc;
 
     if (bank >= 0) {
+#ifdef __psyz
+        if (bank >= TASK_DESCRIPTOR_BANK_COUNT) {
+            fprintf(stderr, "task bank %d does not exist (selector %u)\n", (int)bank, (unsigned)selector.unsignedValue);
+            return NULL;
+        }
+#endif
         desc = gTaskDescBanks[bank];
 #ifdef __psyz
         // Bit 31 of the selector is ignored by the PS1 build: its 32-bit index arithmetic wraps
