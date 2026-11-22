@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.8
 
 - Fix saving preferences on Windows: after the first save every later one failed with "Could not save preferences." because Windows cannot rename over an existing file. Choosing a BIN again when its generated CUE already existed failed the same way.
 - Fix a use-after-free in the AS12 and gunblade muzzle sparks when effects pause right after a shot, a double free when a dying model task is killed again, a scene exit that could walk freed actors forever, and a scene decode buffer leaked on every room change.

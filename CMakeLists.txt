@@ -3,7 +3,7 @@ if(CMAKE_HOST_APPLE AND NOT DEFINED CMAKE_OSX_DEPLOYMENT_TARGET
    AND (NOT DEFINED CMAKE_SYSTEM_NAME OR CMAKE_SYSTEM_NAME STREQUAL "Darwin"))
     set(CMAKE_OSX_DEPLOYMENT_TARGET "15.0" CACHE STRING "Minimum supported macOS version")
 endif()
-project(parasite-eve-ii-pc VERSION 0.3.7 LANGUAGES C)
+project(parasite-eve-ii-pc VERSION 0.3.8 LANGUAGES C)
 # Host cast audits and local tooling consume this on fresh build trees too.
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
