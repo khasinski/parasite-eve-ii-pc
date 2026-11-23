@@ -417,19 +417,20 @@ foreach(_s IN LISTS _pe_game_sources)
     endif()
 endforeach()
 set(_pe_overlay_object_list "")
-set(_pe_overlay_object_deps "")
 foreach(_t IN LISTS _pe_overlay_object_targets)
     string(APPEND _pe_overlay_object_list "$<JOIN:$<TARGET_OBJECTS:${_t}>,\n>\n")
-    list(APPEND _pe_overlay_object_deps $<TARGET_OBJECTS:${_t}>)
 endforeach()
 file(GENERATE OUTPUT ${CMAKE_BINARY_DIR}/overlay_objects.txt CONTENT "${_pe_overlay_object_list}")
-add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/generated/overlay_commons.c
+# Runs on every build after the overlay objects: Makefile generators cannot depend on another target's object files.
+# The generator rewrites overlay_commons.c only when its contents change.
+add_custom_target(pe_overlay_commons_source
     COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/generated
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/port/gen_overlay_commons.py --nm ${CMAKE_NM}
         --output ${CMAKE_BINARY_DIR}/generated/overlay_commons.c @${CMAKE_BINARY_DIR}/overlay_objects.txt
-    DEPENDS ${_pe_overlay_object_deps} ${CMAKE_CURRENT_SOURCE_DIR}/tools/port/gen_overlay_commons.py
-        ${CMAKE_BINARY_DIR}/overlay_objects.txt
+    BYPRODUCTS ${CMAKE_BINARY_DIR}/generated/overlay_commons.c
     COMMENT "Defining the overlays' common symbols"
     VERBATIM)
+add_dependencies(pe_overlay_commons_source ${_pe_overlay_object_targets})
 add_library(pe_overlay_commons OBJECT ${CMAKE_BINARY_DIR}/generated/overlay_commons.c)
+add_dependencies(pe_overlay_commons pe_overlay_commons_source)
 target_sources(parasite-eve-ii-pc PRIVATE $<TARGET_OBJECTS:pe_overlay_commons> $<TARGET_OBJECTS:pe_overlay_data_end>)
