@@ -45,8 +45,9 @@ def darwin_symbols(nm, path):
 def sections(objdump, path):
     """Writable output sections as (begin, end).
 
-    objdump -h reports a PE section's file size, which is 0 for .bss; such a
-    section then ends where the next one in memory begins.
+    objdump -h reports a PE section's file size: 0 for .bss, and less than the
+    memory size when MinGW merges .bss into .data. A writable section
+    therefore extends to the start of the next section in memory.
     """
     listed = []
     for line in run([objdump, '-h', str(path)]).splitlines():
@@ -59,8 +60,8 @@ def sections(objdump, path):
         if name not in WRITABLE_SECTIONS:
             continue
         end = begin + size
-        if not size and index + 1 < len(listed):
-            end = listed[index + 1][0]
+        if index + 1 < len(listed):
+            end = max(end, listed[index + 1][0])
         found.append((begin, end))
     return found
 

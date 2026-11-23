@@ -203,6 +203,13 @@ target_compile_definitions(game_overlays PUBLIC __psyz SKIP_ASM)
 target_compile_options(game_overlays PRIVATE -w -Wno-incompatible-function-pointer-types -g -fno-omit-frame-pointer -include port/gpu_len.h)
 target_link_libraries(game_overlays PUBLIC psyz)
 target_compile_options(game_overlays PRIVATE "SHELL:-include port/random.h")
+# MinGW's lld does not keep the overlays' .bss in link order, so the overlay data markers (src/port/overlay_data.c)
+# could not bound it: their zero-initialized data goes to .data instead, which keeps that order.
+set(PE_OVERLAY_DATA_OPTIONS "")
+if(WIN32)
+    set(PE_OVERLAY_DATA_OPTIONS -fno-zero-initialized-in-bss)
+endif()
+target_compile_options(game_overlays PRIVATE ${PE_OVERLAY_DATA_OPTIONS})
 
 set_property(SOURCE src/stages/akropolis/rooms/helicopter_landing_pad/helicopter_landing_pad.c
     APPEND PROPERTY COMPILE_DEFINITIONS actorMsgPlaceEuler=gHelipadLiftPlaceEuler)
@@ -306,6 +313,7 @@ function(pe_overlay_variant pkg unit src defs hdr)
         # Variant rooms and actors emit the same host GPU packets as base units.
         target_compile_options(${tgt} PRIVATE "SHELL:-include port/gpu_len.h")
         target_compile_options(${tgt} PRIVATE "SHELL:-include port/random.h")
+        target_compile_options(${tgt} PRIVATE ${PE_OVERLAY_DATA_OPTIONS})
         if(hdr)
             target_compile_options(${tgt} PRIVATE -include ${CMAKE_CURRENT_SOURCE_DIR}/${hdr})
         endif()
