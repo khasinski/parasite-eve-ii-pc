@@ -114,9 +114,15 @@ def main():
     missing = MARKERS - marks.keys()
     if missing:
         sys.exit(f'markers missing from {exe}: {sorted(missing)}')
-    for name, (_, writable_mark) in marks.items():
+    for name, (address, writable_mark) in marks.items():
         if not writable_mark:
-            sys.exit(f'{name} is not in writable data')
+            print(f'{name} is not in writable data; markers and sections follow')
+            for marker, (a, w) in sorted(marks.items(), key=lambda m: m[1][0]):
+                print(f'  {a:#x} {"writable" if w else "-"} {marker}')
+            if not darwin:
+                print('  writable spans:', ', '.join(f'{b:#x}..{e:#x}' for b, e in writable))
+                print(run([objdump, '-h', str(exe)]))
+            return 1
     spans = [(marks[b][0], marks[e][0]) for b, e in SPANS]
     for (b, e), (bn, en) in zip(spans, SPANS):
         if e <= b:
