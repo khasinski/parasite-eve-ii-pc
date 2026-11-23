@@ -8,6 +8,7 @@
 #include "main/coord.h"
 
 #include <psyz/gte.h>
+#include "port/model_cull.h"
 
 enum { MAX_HANDLERS = 256 };
 
@@ -122,9 +123,11 @@ void tmdDrawModelStream(TmdStreamWorkspace* ws, u32 objectFlags, u32* stream, Tm
     s32       parts = model->partCount;
     GfxCoord* part  = model->coords;
 
+    peModelCullBegin();
     for (;;) {
         u32 word = *stream;
         if (word == (u32)-1) { /* TMD_STREAM_END */
+            peModelCullEnd();
             return;
         }
         if (parts > 0 && word != (u32)-2) {

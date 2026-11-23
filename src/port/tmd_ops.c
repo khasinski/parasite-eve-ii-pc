@@ -18,6 +18,7 @@
 #include <libgpu.h>
 #include <libgte.h>
 #include <psyz/gte.h>
+#include "port/model_cull.h"
 
 enum {
     GTE_NCCS = 0x4B08041B,
@@ -65,6 +66,7 @@ static void linkPacket(TmdStreamWorkspace* ws, void* packet, u32 length)
 
     setlen(packet, length);
     addPrim(head, packet);
+    peModelCullLinked(head, packet);
 }
 
 /* Untextured Gouraud triangle, one normal per corner. */

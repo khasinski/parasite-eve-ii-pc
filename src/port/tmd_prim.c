@@ -15,6 +15,7 @@
 #include <libgte.h>
 #include <psyz/gte.h>
 #include "port/gte_compat.h"
+#include "port/model_cull.h"
 
 enum {
     DEPTH_MASK  = 0x3FFF,
@@ -41,6 +42,7 @@ static void linkPacket(TmdStreamWorkspace* ws, void* packet, u32 length, u32 cod
     setlen(packet, length);
     setcode(packet, code);
     addPrim(head, packet);
+    peModelCullLinked(head, packet);
 }
 
 static u32* g3PreXform(TmdStreamWorkspace* ws, u32* el, u32 code)

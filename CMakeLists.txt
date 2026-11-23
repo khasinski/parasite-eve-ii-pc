@@ -95,9 +95,9 @@ pe_host_test(gte_compat_test INCLUDES include/decomp DEFINES __psyz SKIP_ASM LIN
 pe_host_test(pe2_discread MAIN tools/port/discread.c SOURCES src/port/disc_assets.c)
 
 pe_host_test(lzss_test SOURCES src/port/lzss.c INCLUDES include/decomp src/main DEFINES __psyz SKIP_ASM LINK psyz)
-pe_host_test(tmd_model_test SOURCES src/port/tmd_dispatch.c INCLUDES include/decomp src/main DEFINES __psyz SKIP_ASM LINK psyz)
-pe_host_test(tmd_prim_test SOURCES src/port/tmd_prim.c src/port/tmd_dispatch.c INCLUDES include/decomp src/main DEFINES __psyz SKIP_ASM LINK psyz)
-pe_host_test(tmd_ops_test SOURCES src/port/tmd_ops.c src/port/tmd_dispatch.c INCLUDES include/decomp src/main DEFINES __psyz SKIP_ASM LINK psyz)
+pe_host_test(tmd_model_test SOURCES src/port/tmd_dispatch.c src/port/model_cull.c INCLUDES include/decomp src/main DEFINES __psyz SKIP_ASM LINK psyz)
+pe_host_test(tmd_prim_test SOURCES src/port/tmd_prim.c src/port/tmd_dispatch.c src/port/model_cull.c INCLUDES include/decomp src/main DEFINES __psyz SKIP_ASM LINK psyz)
+pe_host_test(tmd_ops_test SOURCES src/port/tmd_ops.c src/port/tmd_dispatch.c src/port/model_cull.c INCLUDES include/decomp src/main DEFINES __psyz SKIP_ASM LINK psyz)
 pe_host_test(tmd_source_test SOURCES src/port/tmd_source.c INCLUDES include/decomp DEFINES __psyz SKIP_ASM LINK psyz)
 pe_host_test(image_workspace_test INCLUDES include/decomp DEFINES __psyz SKIP_ASM LINK psyz)
 pe_host_test(tmd_layout_test SOURCES src/port/tmd_layout.c INCLUDES include/decomp DEFINES __psyz SKIP_ASM LINK psyz)
@@ -182,17 +182,17 @@ pe_host_test(weapon_mp5a5_test MAIN tests/weapon_fire_test.c SOURCES tests/weapo
     LINK psyz)
 
 pe_host_test(anim_cue_latch_test)
-pe_host_test(host_menu_probe SOURCES src/port/background_coverage.c INCLUDES include/decomp DEFINES __psyz SKIP_ASM LINK psyz STRIP)
+pe_host_test(host_menu_probe SOURCES src/port/background_coverage.c src/port/model_cull.c INCLUDES include/decomp DEFINES __psyz SKIP_ASM LINK psyz STRIP)
 pe_host_test(scene_image_timeout_test INCLUDES include/decomp DEFINES __psyz SKIP_ASM LINK psyz STRIP)
-pe_host_test(background_coverage_test SOURCES src/port/background_coverage.c INCLUDES ${PSYZ_DIR}/psyz/include DEFINES __psyz)
+pe_host_test(background_coverage_test SOURCES src/port/background_coverage.c src/port/model_cull.c INCLUDES ${PSYZ_DIR}/psyz/include DEFINES __psyz)
 # video.h uses PsyZ public types; this test supplies stub renderer entry points.
 pe_host_test(background_pack_test SOURCES src/port/background_pack.c)
 pe_host_test(native_polygon_clip_probe DEFINES __psyz SKIP_ASM LINK psyz)
-pe_host_test(background_presenter_probe SOURCES src/port/backgrounds.c src/port/background_coverage.c src/port/background_pack.c src/port/gpu_state.c src/port/background_foreground.c src/port/foreground_ot.c src/port/foreground_pack.c src/port/foreground_stage.c
+pe_host_test(background_presenter_probe SOURCES src/port/backgrounds.c src/port/background_coverage.c src/port/model_cull.c src/port/background_pack.c src/port/gpu_state.c src/port/background_foreground.c src/port/foreground_ot.c src/port/foreground_pack.c src/port/foreground_stage.c
     DEFINES __psyz SKIP_ASM LINK psyz)
 pe_host_test(hd_native_decode MAIN tools/hd/native_decode.c SOURCES src/port/mdec_vlc.c src/port/background_pack.c
     INCLUDES include/decomp DEFINES __psyz SKIP_ASM LINK psyz)
-pe_host_test(foreground_presenter_probe SOURCES src/port/background_foreground.c src/port/backgrounds.c src/port/background_coverage.c src/port/background_pack.c src/port/gpu_state.c src/port/foreground_ot.c src/port/foreground_pack.c src/port/foreground_stage.c
+pe_host_test(foreground_presenter_probe SOURCES src/port/background_foreground.c src/port/backgrounds.c src/port/background_coverage.c src/port/model_cull.c src/port/background_pack.c src/port/gpu_state.c src/port/foreground_ot.c src/port/foreground_pack.c src/port/foreground_stage.c
     DEFINES __psyz SKIP_ASM LINK psyz)
 pe_host_test(foreground_packet_test SOURCES src/port/background_foreground.c DEFINES __psyz SKIP_ASM LINK psyz)
 pe_host_test(gpu_state_test SOURCES src/port/gpu_state.c DEFINES __psyz SKIP_ASM LINK psyz)

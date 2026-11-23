@@ -1,5 +1,6 @@
 #include "port/backgrounds.h"
 #include <psyz/video.h>
+#include "port/model_cull.h"
 
 static int requestedWidescreen;
 static unsigned nativeFrames;
@@ -39,5 +40,6 @@ int peBackgroundSetCoverage(int buffer_y, int left, int right)
                right >= 374 && right <= 416 && right - left >= 428;
     if (Psyz_VideoSetWidescreen(wide) != 0) wide = 0;
     Psyz_VideoSetWidescreenPicture(buffer_y, wide ? left : 0, wide ? right : 320);
+    peModelCullSetWide(wide);
     return wide;
 }
