@@ -43,13 +43,25 @@ def darwin_symbols(nm, path):
 
 
 def sections(objdump, path):
-    """Writable output sections as (begin, end)."""
-    found = []
+    """Writable output sections as (begin, end).
+
+    objdump -h reports a PE section's file size, which is 0 for .bss; such a
+    section then ends where the next one in memory begins.
+    """
+    listed = []
     for line in run([objdump, '-h', str(path)]).splitlines():
         m = re.match(r'\s*\d+\s+(\S+)\s+([0-9a-fA-F]+)\s+([0-9a-fA-F]+)', line)
-        if m and m.group(1) in WRITABLE_SECTIONS:
-            begin = int(m.group(3), 16)
-            found.append((begin, begin + int(m.group(2), 16)))
+        if m and int(m.group(3), 16):
+            listed.append((int(m.group(3), 16), int(m.group(2), 16), m.group(1)))
+    listed.sort()
+    found = []
+    for index, (begin, size, name) in enumerate(listed):
+        if name not in WRITABLE_SECTIONS:
+            continue
+        end = begin + size
+        if not size and index + 1 < len(listed):
+            end = listed[index + 1][0]
+        found.append((begin, end))
     return found
 
 
