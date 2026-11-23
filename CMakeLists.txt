@@ -161,7 +161,8 @@ pe_host_test(location_check_test SOURCES src/port/location_check.c)
 
 # Host tests: `cmake --build build --target host_tests && ctest --test-dir build`. They need no game data, except
 # the ones in PE_DATA_TESTS, which read extracted assets given on the command line and are left to local runs.
-pe_host_test(asset_disc_cache_test SOURCES src/port/asset_loader.c src/port/asset_registry.c)
+pe_host_test(asset_disc_cache_test SOURCES src/port/asset_loader.c src/port/asset_registry.c
+    src/port/overlay_data.c src/port/overlay_data_begin.c src/port/overlay_data_end.c)
 pe_host_test(disc_identity_test SOURCES src/port/disc_assets.c)
 pe_host_test(disc_read_test)
 

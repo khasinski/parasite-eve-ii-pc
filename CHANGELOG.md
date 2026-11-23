@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Fix story events that stopped working after loading a save without restarting the game: the Akropolis SWAT officer skipped "Freeze!" and the cafeteria key, and No. 9 did not jump down in Dryfield. The PS1 reloads every stage and room overlay from the disc after a reset; the port's overlays stay in memory, so their state now returns to its initial values on each return to the title.
+
 ## 0.3.8
 
 - Fix saving preferences on Windows: after the first save every later one failed with "Could not save preferences." because Windows cannot rename over an existing file. Choosing a BIN again when its generated CUE already existed failed the same way.

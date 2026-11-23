@@ -65,6 +65,12 @@ jobs:
       - name: Link the OpenGL game and settings UI
         if: matrix.renderer == 'sdl3_gl'
         run: cmake --build build --target parasite-eve-ii-pc --parallel 4
+      - name: Link the game (macOS)
+        if: runner.os == 'macOS'
+        run: cmake --build build --target parasite-eve-ii-pc --parallel 4
+      - name: Overlay data lies between its markers
+        if: runner.os == 'macOS' || matrix.renderer == 'sdl3_gl'
+        run: python3 tools/port/check_overlay_data_span.py build
       - name: Run the host tests
         run: |
           if [ "${{ matrix.renderer }}" = "sdl3_gl" ]; then
@@ -136,6 +142,8 @@ jobs:
         run: cmake --build build-casts --target parasite-eve-ii-pc --parallel 4
       - name: Pointer/int cast warnings
         run: tools/ci/check_host_casts.sh build-casts
+      - name: Overlay data lies between its markers
+        run: python3 tools/port/check_overlay_data_span.py build-casts
   windows-graphics:
     runs-on: windows-latest
     timeout-minutes: 90
@@ -169,6 +177,8 @@ jobs:
         run: cmake --build build --parallel 2 --target parasite-eve-ii-pc portable_graphics_tests portable_audio_tests portable_gameplay_tests
       - name: Portable regressions
         run: ctest --test-dir build --output-on-failure --no-tests=error -L "portable-graphics|portable-audio|portable-gameplay"
+      - name: Overlay data lies between its markers
+        run: python tools/port/check_overlay_data_span.py build --nm llvm-nm
       - name: The executable starts
         run: |
           out=$(build/parasite-eve-ii-pc.exe --help 2>&1 || true)

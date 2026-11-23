@@ -249,8 +249,14 @@ set_property(SOURCE src/stages/akropolis/actors/helicopter_landing_pad_no_9/heli
 if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/src/port/asm_data.c)
     file(WRITE ${CMAKE_CURRENT_SOURCE_DIR}/src/port/asm_data.c "")
 endif()
-add_executable(parasite-eve-ii-pc src/port/main.c src/port/psyq_host.c src/port/heap.c src/port/memory_card.c src/port/fixed_log.c src/port/pad_trace.c src/port/lzss.c src/port/tmd_dispatch.c src/port/tmd_prim.c src/port/tmd_ops.c src/port/mdec_vlc.c src/port/tmd_source.c src/port/tmd_layout.c src/port/cap_asset.c src/port/cap_resource.c src/port/disc_assets.c src/port/asset_loader.c src/port/asset_registry.c src/port/asset_parts_table.c src/port/asm_data.c src/port/globals.c src/port/unresolved_stubs.c $<TARGET_OBJECTS:game_main>
-    $<TARGET_OBJECTS:game_overlays>)
+# Markers linked directly around the overlay objects: their writable data lies between them and is restored on each
+# return to the title, as the PS1 reloads overlays from the disc (src/port/overlay_data.c).
+add_library(pe_overlay_data_begin OBJECT src/port/overlay_data_begin.c)
+add_library(pe_overlay_data_end OBJECT src/port/overlay_data_end.c)
+foreach(_marker pe_overlay_data_begin pe_overlay_data_end)
+    target_include_directories(${_marker} PRIVATE include)
+endforeach()
+add_executable(parasite-eve-ii-pc src/port/main.c src/port/psyq_host.c src/port/heap.c src/port/memory_card.c src/port/fixed_log.c src/port/pad_trace.c src/port/lzss.c src/port/tmd_dispatch.c src/port/tmd_prim.c src/port/tmd_ops.c src/port/mdec_vlc.c src/port/tmd_source.c src/port/tmd_layout.c src/port/cap_asset.c src/port/cap_resource.c src/port/disc_assets.c src/port/asset_loader.c src/port/asset_registry.c src/port/asset_parts_table.c src/port/asm_data.c src/port/globals.c src/port/unresolved_stubs.c src/port/overlay_data.c $<TARGET_OBJECTS:game_main>)
 target_include_directories(parasite-eve-ii-pc PRIVATE include include/decomp src/main)
 target_compile_definitions(parasite-eve-ii-pc PRIVATE __psyz SKIP_ASM)
 if(PSYZ_RENDERER STREQUAL "sdl3_gl")
@@ -276,6 +282,9 @@ if(PE2_HD_BACKGROUNDS)
     target_compile_definitions(parasite-eve-ii-pc PRIVATE PE2_HD_BACKGROUNDS_ENABLED=1)
 endif()
 target_sources(parasite-eve-ii-pc PRIVATE src/port/host_ui.c src/port/backgrounds.c src/port/background_coverage.c src/port/background_pack.c src/port/gpu_state.c src/port/background_foreground.c src/port/foreground_ot.c src/port/foreground_pack.c src/port/foreground_stage.c)
+# Overlay objects, base and variant units, come last, between their data markers (pe_overlay_data_end is added at
+# the end of this file). Host sources must be added above this line.
+target_sources(parasite-eve-ii-pc PRIVATE $<TARGET_OBJECTS:pe_overlay_data_begin> $<TARGET_OBJECTS:game_overlays>)
 
 # Variant units: a package compiled from another package's shared source with its own -D parameters.
 # Each is a separate object library so the parameters stay per package (see docs/PORT_PLAN.md).
@@ -395,3 +404,32 @@ if(PE_ALL_OVERLAYS AND PE_ALL_VARIANTS AND EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/cm
     pe_rename_object(game_overlays src/rooms/dryfield_water_tower/dryfield_water_tower_2.c
         "roomVariantWaterTowerMsg=PE_rooms_dryfield_water_tower_dryfield_water_tower_roomVariantWaterTowerMsg;waterTowerSoundMsg=PE_rooms_dryfield_water_tower_dryfield_water_tower_waterTowerSoundMsg")
 endif()
+
+# Real definitions of the overlays' common symbols, so that they are linked with the rest of the overlay data
+# (tools/port/gen_overlay_commons.py). Then the end marker closes the overlay objects: nothing may be added to the
+# game's sources after this.
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
+get_target_property(_pe_game_sources parasite-eve-ii-pc SOURCES)
+set(_pe_overlay_object_targets game_overlays)
+foreach(_s IN LISTS _pe_game_sources)
+    if(_s MATCHES "^\\$<TARGET_OBJECTS:(pe_var_[^>]+)>$")
+        list(APPEND _pe_overlay_object_targets ${CMAKE_MATCH_1})
+    endif()
+endforeach()
+set(_pe_overlay_object_list "")
+set(_pe_overlay_object_deps "")
+foreach(_t IN LISTS _pe_overlay_object_targets)
+    string(APPEND _pe_overlay_object_list "$<JOIN:$<TARGET_OBJECTS:${_t}>,\n>\n")
+    list(APPEND _pe_overlay_object_deps $<TARGET_OBJECTS:${_t}>)
+endforeach()
+file(GENERATE OUTPUT ${CMAKE_BINARY_DIR}/overlay_objects.txt CONTENT "${_pe_overlay_object_list}")
+add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/generated/overlay_commons.c
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/generated
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/port/gen_overlay_commons.py --nm ${CMAKE_NM}
+        --output ${CMAKE_BINARY_DIR}/generated/overlay_commons.c @${CMAKE_BINARY_DIR}/overlay_objects.txt
+    DEPENDS ${_pe_overlay_object_deps} ${CMAKE_CURRENT_SOURCE_DIR}/tools/port/gen_overlay_commons.py
+        ${CMAKE_BINARY_DIR}/overlay_objects.txt
+    COMMENT "Defining the overlays' common symbols"
+    VERBATIM)
+add_library(pe_overlay_commons OBJECT ${CMAKE_BINARY_DIR}/generated/overlay_commons.c)
+target_sources(parasite-eve-ii-pc PRIVATE $<TARGET_OBJECTS:pe_overlay_commons> $<TARGET_OBJECTS:pe_overlay_data_end>)

@@ -1,6 +1,7 @@
 #include "gamemain.h"
 #ifdef __psyz
 #include "port/backgrounds.h"
+#include "port/overlay_data.h"
 #include "main/wipsys.h"
 #include "gameplay/area_entry.h"
 #include <stdlib.h>
@@ -189,6 +190,14 @@ static void _gameMainInitialize(void)
     memConfigureImageMemory(GAME_STAGE_NONE, 0);
     memInitHeaps();
     taskResetDefaultList();
+#ifdef __psyz
+    // The PS1 reloads every overlay from the disc after a reset; resident native overlays restore their data.
+    if (_gGameMainInitializationCount == GAME_MAIN_FIRST_INITIALIZATION) {
+        peOverlayDataSnapshot();
+    } else {
+        peOverlayDataRestore();
+    }
+#endif
     actorRenderResetLists();
     _gameMainInitGraphics();
 

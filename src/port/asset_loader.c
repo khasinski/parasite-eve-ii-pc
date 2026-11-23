@@ -9,6 +9,7 @@
 #include "port/asset_bind.h"
 #include "port/asset_parts.h"
 #include "port/disc_assets.h"
+#include "port/overlay_data.h"
 int peAssetsDump(const char* path);
 
 #ifdef __APPLE__
@@ -160,6 +161,8 @@ int peAssetsLoad(struct PeDisc* disc)
                 out[k] = w ? cells + (w - base) / 2 : NULL;
             }
         }
+        /* Disc 2 fills bindings after the initial overlay data was recorded. */
+        peOverlayDataRefresh(b[i].dst, b[i].size);
         loaded[i] = 1;
         filled++;
     }
