@@ -4,6 +4,7 @@
 
 - Fix story events that stopped working after loading a save without restarting the game: the Akropolis SWAT officer skipped "Freeze!" and the cafeteria key, and No. 9 did not jump down in Dryfield. The PS1 reloads every stage and room overlay from the disc after a reset; the port's overlays stay in memory, so their state now returns to its initial values on each return to the title.
 - Widescreen: models the game parks just off its 4:3 screen, such as Kyle beside the MIST shooting gallery, are no longer drawn on the side bars. A model that reaches into the original screen is still drawn whole.
+- Fix models disappearing or turning dark during screen-wave and capture effects with the GPU renderer, such as No. 9 vanishing while he laughs after the Dryfield fight: the effect sampled the frame before the models drawn ahead of it had reached the texture it reads.
 
 ## 0.3.8
 
