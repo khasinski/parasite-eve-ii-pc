@@ -1,6 +1,7 @@
 /* Round-trips a hand-built LZSS stream through fsDecompressImagePayload and
  * the resumable fsDecompressStream (split at every input boundary). */
 #include <stdio.h>
+#include <stdint.h>
 #include <string.h>
 #include "fs.h"
 #include "port/psyq_compat.h"
@@ -76,6 +77,26 @@ int main(void)
     fsDecompressStream();
     if (memcmp(tail, expect, 4) || gFsLzssDecodeStatus != FILE_SYSTEM_LZSS_DECODE_COMPLETE) {
         puts("stream overrun FAIL"); return 1;
+    }
+    /* A sector boundary after output has filled must not lose the bound on
+     * resume. Exercise every input split, not just a single uninterrupted run. */
+    for (int split = 2; split < bytes - 1; split++) {
+        memset(tail, 0, 4);
+        gFsLzssInputByte = 0; gFsLzssUnreadBitMask = 0; gFsLzssRingWriteIndex = 1;
+        gFsLzssResumeAddress = NULL; gFsLzssDecodeStatus = FILE_SYSTEM_LZSS_DECODE_NEEDS_INPUT;
+        gFsPayloadWriteCursor = tail; gFsLzssInputCursor = w.buf; gFsLzssInputEnd = w.buf + split;
+        fsDecompressStream();
+        if ((uintptr_t)gFsPayloadWriteCursor > (uintptr_t)(gHostRam + sizeof(gHostRam))) {
+            printf("stream bound lost at split %d\n", split); return 1;
+        }
+        if (gFsLzssDecodeStatus == FILE_SYSTEM_LZSS_DECODE_NEEDS_INPUT) {
+            gFsLzssInputEnd = w.buf + bytes + 64;
+            fsDecompressStream();
+        }
+        if (memcmp(tail, expect, 4) || gFsLzssDecodeStatus != FILE_SYSTEM_LZSS_DECODE_COMPLETE ||
+            gFsPayloadWriteCursor != gHostRam + sizeof(gHostRam)) {
+            printf("stream overrun resume FAIL at split %d\n", split); return 1;
+        }
     }
     puts("lzss OK");
     return 0;
