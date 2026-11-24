@@ -36,12 +36,19 @@ static const u8* _lzssOutputLimit(const u8* out)
 {
     const u8* ram    = gHostRam;
     const u8* upload = (const u8*)_gFsImageUploadBuffer;
-    if (out >= ram && out < ram + sizeof(gHostRam)) {
+    uintptr_t address = (uintptr_t)out;
+    uintptr_t ramStart = (uintptr_t)ram, ramEnd = ramStart + sizeof(gHostRam);
+    uintptr_t uploadStart = (uintptr_t)upload, uploadEnd = uploadStart + sizeof(_gFsImageUploadBuffer);
+    if (address >= ramStart && address < ramEnd) {
         return ram + sizeof(gHostRam);
     }
-    if (out >= upload && out < upload + sizeof(_gFsImageUploadBuffer)) {
+    if (address >= uploadStart && address < uploadEnd) {
         return upload + sizeof(_gFsImageUploadBuffer);
     }
+    /* The write cursor is clamped at the end across a suspended stream.
+     * Test interior ranges first in case another object starts at that address. */
+    if (address == ramEnd) return ram + sizeof(gHostRam);
+    if (address == uploadEnd) return upload + sizeof(_gFsImageUploadBuffer);
     return NULL;
 }
 
@@ -56,12 +63,11 @@ static void _lzssReportOverrun(void)
 
 #define PUT(b)                                     \
     do {                                           \
-        if (limit == NULL || out < limit) {        \
-            *out = (b);                            \
-        } else if (out == limit) {                 \
+        if (limit == NULL || (uintptr_t)out < (uintptr_t)limit) { \
+            *out++ = (b);                          \
+        } else {                                   \
             _lzssReportOverrun();                  \
         }                                          \
-        out++;                                     \
     } while (0)
 
 void fsDecompressStream(void)
